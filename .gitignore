@@ -1,3 +1,7 @@
+.vscode
+.neptune
+rename_state_dicts*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
