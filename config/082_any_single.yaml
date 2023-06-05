@@ -1,0 +1,41 @@
+defaults:
+  - ancillary/neptune@_global_
+  - ancillary/hpc_paths@_global_
+  - ancillary/1gpu@_global_
+  # - ancillary/4gpu@_global_
+  - ancillary/2hr@_global_
+  # - ancillary/24hr@_global_
+  - _self_
+
+module: task.mimic_cxr.model.report_gen.any.single
+definition: SingleCXR
+
+sections_to_evaluate: ['report']
+# generation_config: 
+#   min_new_tokens: 5
+
+generation_config_test:
+  decoder_max_len: 256
+  num_test_beams: 4
+
+generation_config_val:
+  decoder_max_len: 256
+  num_test_beams: 1
+
+max_images_per_study: 5
+lr: 5e-5
+max_epochs: 32
+mbatch_size: 8
+accumulated_mbatch_size: 32
+every_n_epochs: 1
+monitor: 'val_report_chexbert_f1_macro'
+monitor_mode: 'max'
+precision: 16
+deterministic: False
+enable_progress_bar: True
+weights_summary: 'full'
+
+fact_entnli_mbatch_size: 1
+
+image_dir:  /datasets/work/hb-mlaifsp-mm/work/images
+module_load_apptainer: module load apptainer/1.1.3;

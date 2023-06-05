@@ -1,0 +1,25 @@
+defaults:
+  - 082_any_single
+  # - ancillary/1gpu@_global_
+  - ancillary/4gpu@_global_
+  - _self_
+
+time_limit: '96:00:00'
+
+module: task.mimic_cxr.model.report_gen.any.scst.gt_prompt
+definition: GTPromptFactENTNLIBERTScore
+
+mbatch_size: 1
+
+lr: 5e-6
+
+variable_ckpt_path: /datasets/work/hb-mlaifsp-mm/work/experiments/mimic_cxr/083_any_variable/trial_1/epoch=28-val_report_chexbert_f1_macro=0.383505.ckpt
+
+warm_start_exp_dir: /datasets/work/hb-mlaifsp-mm/work/experiments/mimic_cxr/091_any_prompt_variable_lora
+warm_start_monitor: val_report_chexbert_f1_macro
+warm_start_monitor_mode: max
+
+max_epochs: 1
+enable_progress_bar: True
+log_every_n_steps: 50
+val_check_interval: 0.1

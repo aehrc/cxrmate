@@ -1,6 +1,15 @@
 .vscode
 .neptune
-rename_state_dicts*
+# rename_state_dicts*
+# test_hf*
+# *depreciated*
+# *_to_hub*
+# *_from_hub*
+# *transformers*
+# *_any_*
+# *_all_*
+# *_gen_*
+# *_gt_*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

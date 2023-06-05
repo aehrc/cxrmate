@@ -1,6 +1,6 @@
 import torch
 
-from task.mimic_cxr.datasets.dicom_id import DICOMIDSubset
+from data.dicom_id import DICOMIDSubset
 
 
 class StudyIDSubset(DICOMIDSubset):

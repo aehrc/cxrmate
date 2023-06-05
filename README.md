@@ -4,7 +4,7 @@
 |----|
 | <p align="center"> <a>CXRMate: longitudinal, variable-CXR report generation. The decoder is prompted by the impression section of the previous study. [PMT], [BOS],  [SEP], and [EOS] denote the *prompt*, *beginning-of-sentence*, *separator*, and *end-of-sentence* special tokens, respectively.</a> </p> |
 
-## Generated reports:
+# Generated reports:
 <!-- Generated reports for the single-CXR, variable-CXR, and longitudinal, variable-CXR (both prompted with the ground truth and the generated reports) are located in the [`generated_reports`](https://github.com/aehrc/cxrmate/blob/main/generated_reports) directory. -->
 Generated reports for the single-CXR, variable-CXR, and longitudinal, variable-CXR (both prompted with the ground truth and the generated reports) are located in the [`generated_reports`](https://anonymous.4open.science/r/cxrmate-D1D3/generated_reports) directory.
 
@@ -17,6 +17,10 @@ source venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install --upgrade -r requirements.txt --no-cache-dir
 ```
+
+# Hugging Face model:
+
+Singe-CXR: https://huggingface.co/aehrc/mimic-cxr-report-gen-single
 
 ## MIMIC-CXR Dataset:   
 
