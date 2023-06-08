@@ -2,11 +2,18 @@ time_limit: '02:00:00'
 memory: '64GB'
 email: 'aaron.nicolson@csiro.au'
 
-exp_dir: /datasets/work/hb-mlaifsp-mm/work/experiments
-dataset_dir: /datasets/work/hb-mlaifsp-mm/work/datasets
-ckpt_zoo_dir: /datasets/work/hb-mlaifsp-mm/work/checkpoints
-venv_path: /datasets/work/hb-mlaifsp-mm/work/environments/multimodal_23/bin/activate
-cluster_manager_commands: [['account', 'OD-221833']]
+# exp_dir: /datasets/work/hb-mlaifsp-mm/work/experiments
+# dataset_dir: /datasets/work/hb-mlaifsp-mm/work/datasets
+# ckpt_zoo_dir: /datasets/work/hb-mlaifsp-mm/work/checkpoints
+# venv_path: /datasets/work/hb-mlaifsp-mm/work/environments/multimodal_23/bin/activate
+
+exp_dir: /scratch/pawsey0864/anicolson/experiments
+dataset_dir: /scratch/pawsey0864/anicolson/datasets
+ckpt_zoo_dir: /scratch/pawsey0864/anicolson/checkpoints
+
+# venv_path: /datasets/work/hb-mlaifsp-mm/work/environments/multimodal_23/bin/activate
+
+# cluster_manager_commands: [['account', 'OD-221833']]
 
 devices: 1
 num_nodes: 1

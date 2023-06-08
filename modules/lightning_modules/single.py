@@ -64,7 +64,7 @@ class SingleCXR(LightningModule):
         # Paths:
         self.merged_csv_path = os.path.join(self.dataset_dir, 'mimic_cxr_merged', 'splits_reports_metadata.csv')
         self.tokenizer_dir =  os.path.join(self.ckpt_zoo_dir, 'mimic-cxr-tokenizers', 'bpe_prompt')
-        self.mimic_cxr_dir = os.path.join(self.dataset_dir, 'mimic_cxr_jpg', 'physionet.org', 'files', 'mimic-cxr-jpg', '2.0.0', 'files')
+        self.mimic_cxr_dir = os.path.join(self.dataset_dir, 'physionet.org', 'files', 'mimic-cxr-jpg', '2.0.0', 'files')
 
         """
         Evaluation metrics
@@ -168,8 +168,10 @@ class SingleCXR(LightningModule):
         Initialise torch.nn.Modules.
         """
 
+        encoder_decoder_ckpt_name = 'aehrc/mimic-cxr-report-gen-single'
+
         # Decoder tokenizer:
-        self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(self.tokenizer_dir, local_files_only=True)
+        self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(encoder_decoder_ckpt_name, cache_dir=os.path.join(self.ckpt_zoo_dir))
         os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
         # Print the special tokens:
