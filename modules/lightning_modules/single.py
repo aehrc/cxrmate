@@ -168,10 +168,13 @@ class SingleCXR(LightningModule):
         Initialise torch.nn.Modules.
         """
 
+        # Encoder-to-decoder checkpoint name:
         encoder_decoder_ckpt_name = 'aehrc/mimic-cxr-report-gen-single'
 
         # Decoder tokenizer:
-        self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(encoder_decoder_ckpt_name, cache_dir=os.path.join(self.ckpt_zoo_dir))
+        self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(
+            encoder_decoder_ckpt_name, cache_dir=self.ckpt_zoo_dir,
+        )
         os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
         # Print the special tokens:
@@ -189,6 +192,8 @@ class SingleCXR(LightningModule):
             num_hidden_layers=6,
             type_vocab_size=self.type_vocab_size,
         )  # BERT as it includes token_type_ids.
+        config_decoder.is_decoder = True
+        config_decoder.add_cross_attention = True
         encoder_ckpt_name = 'microsoft/cvt-21-384-22k'
         config_encoder = CvtWithProjectionHeadConfig.from_pretrained(
             os.path.join(self.ckpt_zoo_dir, encoder_ckpt_name),
@@ -206,46 +211,45 @@ class SingleCXR(LightningModule):
             decoder = transformers.BertLMHeadModel(config=config_decoder)
             self.encoder_decoder = SingleCXREncoderDecoderModel(encoder=encoder, decoder=decoder)
         else:
-            config = transformers.VisionEncoderDecoderConfig.from_encoder_decoder_configs(config_encoder, config_decoder)
+            config = transformers.VisionEncoderDecoderConfig.from_pretrained(
+                encoder_decoder_ckpt_name, trust_remote_code=True, cache_dir=self.ckpt_zoo_dir,
+            )
             self.encoder_decoder = SingleCXREncoderDecoderModel(config=config)
 
         # This is to get the pre-processing parameters for the checkpoint, this is not actually used for pre-processing:
-        self.encoder_feature_extractor = transformers.AutoFeatureExtractor.from_pretrained(
-            os.path.join(self.ckpt_zoo_dir, encoder_ckpt_name),
-            local_files_only=True,
-        )
+        image_processor = transformers.AutoFeatureExtractor.from_pretrained(encoder_decoder_ckpt_name, cache_dir=self.ckpt_zoo_dir)
 
         # Image transformations:
         self.train_transforms = transforms.Compose(
             [
-                transforms.Resize(size=self.encoder_feature_extractor.size['shortest_edge']),
+                transforms.Resize(size=image_processor.size['shortest_edge']),
                 transforms.RandomCrop(
                     size=[
-                        self.encoder_feature_extractor.size['shortest_edge'],
-                        self.encoder_feature_extractor.size['shortest_edge'],
+                        image_processor.size['shortest_edge'],
+                        image_processor.size['shortest_edge'],
                     ],
                     pad_if_needed=True,
                 ),
                 transforms.RandomRotation(degrees=5),
                 transforms.ToTensor(),
                 transforms.Normalize(
-                    mean=self.encoder_feature_extractor.image_mean,
-                    std=self.encoder_feature_extractor.image_std,
+                    mean=image_processor.image_mean,
+                    std=image_processor.image_std,
                 ),
             ]
         )
         self.test_transforms = transforms.Compose(
             [
-                transforms.Resize(size=self.encoder_feature_extractor.size['shortest_edge']),
+                transforms.Resize(size=image_processor.size['shortest_edge']),
                 transforms.CenterCrop(size=[
-                    self.encoder_feature_extractor.size['shortest_edge'],
-                    self.encoder_feature_extractor.size['shortest_edge'],
+                    image_processor.size['shortest_edge'],
+                    image_processor.size['shortest_edge'],
                 ]
                 ),
                 transforms.ToTensor(),
                 transforms.Normalize(
-                    mean=self.encoder_feature_extractor.image_mean,
-                    std=self.encoder_feature_extractor.image_std,
+                    mean=image_processor.image_mean,
+                    std=image_processor.image_std,
                 ),
             ]
         )
@@ -414,10 +418,10 @@ class SingleCXR(LightningModule):
             bos_token_id=self.tokenizer.bos_token_id,
             eos_token_id=self.tokenizer.eos_token_id, 
             pad_token_id=self.tokenizer.pad_token_id,
-            num_beams=2,
+            num_beams=1,
             return_dict_in_generate=True,
             use_cache=True,
-        )
+        )['sequences']
 
         # Findings and impression sections:
         findings, impression = self.encoder_decoder.split_and_decode_sections(
@@ -486,7 +490,7 @@ class SingleCXR(LightningModule):
             num_beams=self.num_test_beams,
             return_dict_in_generate=True,
             use_cache=True,
-        )
+        )['sequences']
 
         # Log report token identifier:
         self.test_report_ids_logger.update(output_ids, dicom_ids=batch['dicom_ids'], study_ids=batch['study_ids'])

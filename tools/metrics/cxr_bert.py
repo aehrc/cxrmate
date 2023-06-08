@@ -79,16 +79,8 @@ class CXRBERT(Metric):
 
         # Load the model and tokenizer
         ckpt_name = 'microsoft/BiomedVLP-CXR-BERT-specialized'
-        tokenizer = AutoTokenizer.from_pretrained(
-            os.path.join(self.ckpt_dir, ckpt_name),
-            local_files_only=True,
-            trust_remote_code=True,
-        )
-        model = AutoModel.from_pretrained(
-            os.path.join(self.ckpt_dir, ckpt_name),
-            local_files_only=True,
-            trust_remote_code=True,
-        ).to(self.device)
+        tokenizer = AutoTokenizer.from_pretrained(ckpt_name, cache_dir=self.ckpt_dir, trust_remote_code=True)
+        model = AutoModel.from_pretrained(ckpt_name, cache_dir=self.ckpt_dir, trust_remote_code=True).to(self.device)
         model.eval()
 
         rows = []

@@ -5,4 +5,4 @@ defaults:
 module: modules.lightning_modules.variable
 definition: VariableCXR
 
-mbatch_size: 4
+mbatch_size: 32

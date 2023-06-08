@@ -28,8 +28,10 @@ class VariableCXR(SingleCXR):
         Initialise torch.nn.Modules.
         """
 
+        encoder_decoder_ckpt_name = 'aehrc/mimic-cxr-report-gen-single'
+
         # Decoder tokenizer:
-        self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(self.tokenizer_dir, local_files_only=True)
+        self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(encoder_decoder_ckpt_name, cache_dir=os.path.join(self.ckpt_zoo_dir))
         os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
         # Print the special tokens:
@@ -187,112 +189,6 @@ class VariableCXR(SingleCXR):
 
         return outputs.logits
 
-    # def encoder_forward(self, images, dicom_study_ids):
-    #     """
-    #     Encoder forward propagation.
-
-    #     Argument/s:
-    #         images - a mini-batch of images.
-    #         dicom_study_ids - DICOM study ID.
-
-    #     Returns:
-    #         encoder_outputs - transformers.modeling_outputs.ModelOutput.
-    #     """
-    #     image_features = self.encoder(images).last_hidden_state
-    #     image_features = torch.permute(torch.flatten(image_features, 2), [0, 2, 1])
-
-    #     # https://github.com/huggingface/transformers/blob/b487096b02307cd6e0f132b676cdcc7255fe8e74/src/transformers/models/vit/modeling_vit.py#L569
-    #     image_features = self.last_hidden_state_layer_norm(image_features)
-
-    #     image_features = self.encoder_projection(image_features)
-
-    #     mbatch_size = len(set(dicom_study_ids))
-    #     max_images = dicom_study_ids.count(max(dicom_study_ids, key=dicom_study_ids.count))
-    #     feature_size = image_features.shape[-1]
-    #     spatial_positions = image_features.shape[-2]
-
-    #     attention_mask = torch.zeros(mbatch_size, max_images * spatial_positions).to(self.device)
-    #     reshaped_image_features = torch.zeros(
-    #         mbatch_size, max_images * spatial_positions, feature_size, dtype=image_features.dtype,
-    #     ).to(self.device)
-
-    #     #  There has to be a better way to do the following:
-    #     row_count, column_count = 0, 0
-    #     previous = dicom_study_ids[0]
-    #     for i, j in enumerate(dicom_study_ids):
-    #         if j != previous:
-    #             row_count += 1
-    #             column_count = 0
-    #         attention_mask[row_count, column_count:column_count + spatial_positions] = 1.0
-    #         reshaped_image_features[row_count, column_count:column_count + spatial_positions] = image_features[i]
-    #         column_count += spatial_positions
-    #         previous = j
-
-    #     encoder_outputs = transformers.modeling_outputs.BaseModelOutput(last_hidden_state=reshaped_image_features)
-
-    #     return encoder_outputs, attention_mask
-
-    # def forward(self, images, dicom_study_ids, decoder_input_ids, decoder_attention_mask, decoder_token_type_ids):
-    #     """
-    #     https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#forward
-    #     """
-    #     encoder_outputs, attention_mask = self.encoder_forward(images, dicom_study_ids)
-
-    #     # Teacher forcing: labels are given as input:
-    #     outputs = self.encoder_decoder(
-    #         decoder_input_ids=decoder_input_ids,
-    #         decoder_attention_mask=decoder_attention_mask,
-    #         decoder_token_type_ids=decoder_token_type_ids,
-    #         attention_mask=attention_mask,
-    #         encoder_outputs=encoder_outputs,
-    #         return_dict=True,
-    #     )
-
-    #     return outputs.logits
-
-    # def generate(
-    #     self,
-    #     num_beams: int, 
-    #     dicom_study_ids: List[int], 
-    #     images: Optional[torch.Tensor] = None, 
-    #     encoder_outputs: Optional[BaseModelOutput] = None,
-    #     attention_mask: Optional[torch.Tensor] = None,
-    # ):
-    #     """
-    #     Autoregressively generate a prediction.
-
-    #     Argument/s:
-    #         num_beams - number of considered beams for the search (one beam is a greedy search).
-    #         dicom_study_ids - study identifier of each DICOM.
-    #         prompt_ids - token identifiers of the previous impression section to prompt the next report.
-    #         images - images for each study.
-    #         encoder_outputs - outputs of the encoder.
-    #         attention_mask - attention mask for the cross-attention.
-
-    #     Returns:
-    #         Indices of the tokens for the predicted sequence.
-    #     """
-
-    #     # Encoder outputs for cross-attention:
-    #     if encoder_outputs is None:
-    #         encoder_outputs, attention_mask = self.encoder_forward(images, dicom_study_ids)
-
-    #     outputs = self.encoder_decoder.generate(
-    #         special_token_ids=[self.tokenizer.sep_token_id],
-    #         max_length=self.decoder_max_len,
-    #         bos_token_id=self.tokenizer.bos_token_id,
-    #         eos_token_id=self.tokenizer.eos_token_id,
-    #         pad_token_id=self.tokenizer.pad_token_id,
-    #         num_beams=num_beams,
-    #         return_dict_in_generate=True,
-    #         use_cache=True,
-    #         attention_mask=attention_mask,
-    #         encoder_outputs=encoder_outputs,
-    #         **self.generation_config,
-    #     )
-
-    #     return outputs['sequences']
-
     def training_step(self, batch, batch_idx):
         """
         https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#training-step
@@ -330,16 +226,24 @@ class VariableCXR(SingleCXR):
         """
 
         # Greedy search:
-        output_ids = self.generate(
-            num_beams=1, 
+        output_ids = self.encoder_decoder.generate(
+            pixel_values=batch['images'],
+            special_token_ids=[self.tokenizer.sep_token_id],
             dicom_study_ids=batch['dicom_study_ids'], 
-            images=batch['images'], 
-        )
+            max_length=self.decoder_max_len,
+            bos_token_id=self.tokenizer.bos_token_id,
+            eos_token_id=self.tokenizer.eos_token_id, 
+            pad_token_id=self.tokenizer.pad_token_id,
+            num_beams=1,
+            return_dict_in_generate=True,
+            use_cache=False,  # Causes "/pytorch/aten/src/ATen/native/hip/Indexing.hip:1095: indexSelectSmallIndex: Device-side assertion `srcIndex < srcSelectDimSize' failed" if True.
+        )['sequences']
 
         # Findings and impression sections:
-        findings, impression = self.split_and_decode_sections(
+        findings, impression = self.encoder_decoder.split_and_decode_sections(
             output_ids,
             [self.tokenizer.sep_token_id, self.tokenizer.eos_token_id],
+            self.tokenizer,
         )
 
         # Log reports:
@@ -370,19 +274,27 @@ class VariableCXR(SingleCXR):
         """
 
         # Beam search:
-        output_ids = self.generate(
-            num_beams=self.num_test_beams, 
+        output_ids = self.encoder_decoder.generate(
+            pixel_values=batch['images'],
+            special_token_ids=[self.tokenizer.sep_token_id],
             dicom_study_ids=batch['dicom_study_ids'], 
-            images=batch['images'], 
-        )
+            max_length=self.decoder_max_len,
+            bos_token_id=self.tokenizer.bos_token_id,
+            eos_token_id=self.tokenizer.eos_token_id,
+            pad_token_id=self.tokenizer.pad_token_id,
+            num_beams=self.num_test_beams,
+            return_dict_in_generate=True,
+            use_cache=False,  # Causes "/pytorch/aten/src/ATen/native/hip/Indexing.hip:1095: indexSelectSmallIndex: Device-side assertion `srcIndex < srcSelectDimSize' failed" if True.
+        )['sequences']
 
         # Log report token identifier:
         self.test_report_ids_logger.update(output_ids, study_ids=batch['study_ids'])
 
         # Findings and impression sections:
-        findings, impression = self.split_and_decode_sections(
+        findings, impression = self.encoder_decoder.split_and_decode_sections(
             output_ids,
             [self.tokenizer.sep_token_id, self.tokenizer.eos_token_id],
+            self.tokenizer,
         )
 
         # Log reports:

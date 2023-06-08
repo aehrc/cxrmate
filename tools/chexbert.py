@@ -11,10 +11,8 @@ class CheXbert(nn.Module):
 
         self.device = device
 
-        self.tokenizer = BertTokenizer.from_pretrained(
-            os.path.join(ckpt_dir, bert_path), local_files_only=True,
-        )
-        config = BertConfig().from_pretrained(os.path.join(ckpt_dir, bert_path), local_files_only=True)
+        self.tokenizer = BertTokenizer.from_pretrained(bert_path, cache_dir=ckpt_dir)
+        config = BertConfig().from_pretrained(bert_path, cache_dir=ckpt_dir)
 
         with torch.no_grad():
 

@@ -6,6 +6,7 @@ from dlhpcstarter.utils import (get_test_ckpt_path, importer,
                                 load_config_and_update_args,
                                 resume_from_ckpt_path, write_test_ckpt_path)
 from lightning.pytorch import seed_everything
+import transformers
 
 
 def stages(args: Namespace):
@@ -73,8 +74,11 @@ def stages(args: Namespace):
 
     # Test
     if args.test:
-
-        if args.fast_dev_run:
+        if hasattr(args, 'test_ckpt_name'):
+            assert 'model' not in locals(), 'if "test_ckpt_name" is defined in the config, it will overwrite the model checkpoint that has been trained.'
+            model = TaskModel(**vars(args))
+            model.encoder_decoder = transformers.AutoModel.from_pretrained(args.test_ckpt_name, trust_remote_code=True, cache_dir=args.ckpt_zoo_dir)
+        elif args.fast_dev_run:
             if 'model' not in locals():
                 model = TaskModel(**vars(args))
         else:

@@ -118,6 +118,9 @@ class SingleCXREncoderDecoderModel(VisionEncoderDecoderModel):
         self.encoder = encoder
         self.decoder = decoder
 
+        assert self.decoder.config.add_cross_attention
+        assert self.decoder.config.is_decoder
+
         if self.encoder.config.to_dict() != self.config.encoder.to_dict():
             logger.warning(
                 f"Config of the encoder: {self.encoder.__class__} is overwritten by shared encoder config:"
@@ -131,9 +134,6 @@ class SingleCXREncoderDecoderModel(VisionEncoderDecoderModel):
             
         self.encoder.config = self.config.encoder
         self.decoder.config = self.config.decoder
-
-        # config.add_cross_attention = True
-        # config.is_decoder = True
 
     def forward(
         self,
