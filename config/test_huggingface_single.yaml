@@ -2,4 +2,4 @@ defaults:
   - train_single
   - _self_
 
-test_ckpt_name: 'aehrc/mimic-cxr-report-gen-single'
+test_ckpt_name: 'aehrc/cxrmate-single-tf'

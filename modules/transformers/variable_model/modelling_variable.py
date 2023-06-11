@@ -205,35 +205,6 @@ class VariableCXREncoderDecoderModel(VisionEncoderDecoderModel):
                 **kwargs_encoder,
             )  # CvT does not support output_attentions.
 
-            # Stack visual features from each study:
-            mbatch_size = len(set(dicom_study_ids))
-            max_images = dicom_study_ids.count(max(dicom_study_ids, key=dicom_study_ids.count))
-            feature_size = encoder_outputs.projected_last_hidden_state.shape[-1]
-            spatial_positions = encoder_outputs.projected_last_hidden_state.shape[-2]
-
-            # Create attention mask and visual features:
-            self.encoder_attention_mask = torch.zeros(mbatch_size, max_images * spatial_positions).to(self.device)
-            visual_features = torch.zeros(
-                mbatch_size, 
-                max_images * spatial_positions, 
-                feature_size, 
-                dtype=encoder_outputs.projected_last_hidden_state.dtype,
-            ).to(self.device)
-
-            # There has to be a better way to do the following:
-            row_count, column_count = 0, 0
-            previous = dicom_study_ids[0]
-            for i, j in enumerate(dicom_study_ids):
-                if j != previous:
-                    row_count += 1
-                    column_count = 0
-                self.encoder_attention_mask[row_count, column_count:column_count + spatial_positions] = 1.0
-                visual_features[row_count, column_count:column_count + spatial_positions] = encoder_outputs.projected_last_hidden_state[i]
-                column_count += spatial_positions
-                previous = j
-
-            encoder_outputs.projected_last_hidden_state = visual_features
-
         elif isinstance(encoder_outputs, tuple):
             encoder_outputs = BaseModelOutput(*encoder_outputs)
 
@@ -243,7 +214,7 @@ class VariableCXREncoderDecoderModel(VisionEncoderDecoderModel):
             input_ids=decoder_input_ids,
             attention_mask=decoder_attention_mask,
             encoder_hidden_states=encoder_hidden_states,
-            encoder_attention_mask=self.encoder_attention_mask,
+            encoder_attention_mask=encoder_outputs.attention_mask,
             inputs_embeds=decoder_inputs_embeds,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,

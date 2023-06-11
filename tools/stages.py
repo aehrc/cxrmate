@@ -28,8 +28,9 @@ def stages(args: Namespace):
     load_config_and_update_args(args)
 
     # If AMD Instinct GPU:
-    if torch.cuda.get_device_name() == 'AMD Radeon Graphics':
-        torch.set_float32_matmul_precision('medium')
+    if torch.cuda.is_available():
+        if torch.cuda.get_device_name() == 'AMD Radeon Graphics':
+            torch.set_float32_matmul_precision('medium')
 
     # Model definition:
     TaskModel = importer(definition=args.definition, module=args.module)
