@@ -1,12 +1,13 @@
 import os
 from argparse import Namespace
 
+import torch
+import transformers
 from dlhpcstarter.trainer import trainer_instance
 from dlhpcstarter.utils import (get_test_ckpt_path, importer,
                                 load_config_and_update_args,
                                 resume_from_ckpt_path, write_test_ckpt_path)
 from lightning.pytorch import seed_everything
-import transformers
 
 
 def stages(args: Namespace):
@@ -26,13 +27,17 @@ def stages(args: Namespace):
     # Note: this needs to be called again for submitted jobs due to partial parsing.
     load_config_and_update_args(args)
 
-    # Model definition
+    # If AMD Instinct GPU:
+    if torch.cuda.get_device_name() == 'AMD Radeon Graphics':
+        torch.set_float32_matmul_precision('medium')
+
+    # Model definition:
     TaskModel = importer(definition=args.definition, module=args.module)
 
-    # Trainer
+    # Trainer:
     trainer = trainer_instance(**vars(args))
 
-    # Train
+    # Train:
     if args.train:
 
         # For deterministic training: https://docs.nvidia.com/cuda/cublas/index.html#cublasApi_reproducibility

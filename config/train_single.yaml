@@ -1,0 +1,24 @@
+exp_dir: experiments
+dataset_dir: datasets
+ckpt_zoo_dir: checkpoints
+
+module: modules.lightning_modules.single
+definition: SingleCXR
+
+strategy: 'ddp'
+
+sections_to_evaluate: ['report']
+max_images_per_study: 5
+lr: 5e-5
+max_epochs: 32
+mbatch_size: 8
+accumulated_mbatch_size: 32
+every_n_epochs: 1
+monitor: 'val_report_chexbert_f1_macro'
+monitor_mode: 'max'
+precision: 16
+deterministic: False
+decoder_max_len: 256
+num_test_beams: 4
+enable_progress_bar: True
+weights_summary: 'full'

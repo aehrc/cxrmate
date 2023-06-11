@@ -1,0 +1,8 @@
+defaults:
+  - test_huggingface_single
+  - _self_
+
+module: modules.lightning_modules.variable
+definition: VariableCXR
+
+mbatch_size: 4

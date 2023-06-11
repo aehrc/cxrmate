@@ -8,19 +8,20 @@ import transformers
 from torchvision import transforms
 from transformers.modeling_outputs import BaseModelOutput
 
-from data.study_id import StudyIDSubset
-from modules.lightning_modules.single import SingleCXR
-from modules.transformers.variable_model.modelling_variable import (
+from data.prompt import PreviousReportSubset
+from modules.lightning_modules.variable import VariableCXR
+from modules.transformers.longitudinal_model.modelling_longitudinal import (
     VariableCvtWithProjectionHead, CvtWithProjectionHeadConfig,
-    VariableCXREncoderDecoderModel)
+    LongitudinalPromptVariableCXREncoderDecoderModel)
 
 
-class VariableCXR(SingleCXR):
+class GTPrompt(VariableCXR):
     """
-    Variable-CXR model.
+    Prompt the decoder with the findings and impression section of the previous study.
     """
-    def __init__(self, **kwargs):
-        kwargs['accumulate_over_dicoms'] = False
+    def __init__(self, variable_ckpt_name, lora_rank=8, **kwargs):
+        self.variable_ckpt_path = variable_ckpt_name
+        self.lora_rank = lora_rank
         super().__init__(**kwargs)
 
     def init_modules(self):
@@ -42,7 +43,7 @@ class VariableCXR(SingleCXR):
             else:
                 for i, j in zip(self.tokenizer.additional_special_tokens, self.tokenizer.additional_special_tokens_ids):
                     print(f'additional_special_token, {i}, {j}')
-
+        
         # Encoder & decoder config:
         config_decoder = transformers.BertConfig(
             vocab_size=len(self.tokenizer),
@@ -57,19 +58,15 @@ class VariableCXR(SingleCXR):
             local_files_only=True,
             projection_size=config_decoder.hidden_size,
         )
+        config = transformers.VisionEncoderDecoderConfig.from_encoder_decoder_configs(config_encoder, config_decoder)
 
         # Encoder-to-decoder model:
         if self.warm_start_modules:
-            encoder = VariableCvtWithProjectionHead.from_pretrained(
-                os.path.join(self.ckpt_zoo_dir, encoder_ckpt_name),
-                local_files_only=True,
-                config=config_encoder,
+            self.encoder_decoder = LongitudinalPromptVariableCXREncoderDecoderModel(
+                config=config, encoder_decoder_ckpt_path='aehrc/mimic-cxr-report-gen-single',
             )
-            decoder = transformers.BertLMHeadModel(config=config_decoder)
-            self.encoder_decoder = VariableCXREncoderDecoderModel(encoder=encoder, decoder=decoder)
         else:
-            config = transformers.VisionEncoderDecoderConfig.from_encoder_decoder_configs(config_encoder, config_decoder)
-            self.encoder_decoder = VariableCXREncoderDecoderModel(config=config)
+            self.encoder_decoder = LongitudinalPromptVariableCXREncoderDecoderModel(config=config)
 
         # This is to get the pre-processing parameters for the checkpoint, this is not actually used for pre-processing:
         self.encoder_feature_extractor = transformers.AutoFeatureExtractor.from_pretrained(
@@ -120,6 +117,9 @@ class VariableCXR(SingleCXR):
         # Load the merged MIMIC-CXR .csv file:
         df = pd.read_csv(self.merged_csv_path)
 
+        # Dataframe that provides the history for each study:
+        history = df.copy()
+
         # Drop studies that don't have a findings or impression section:
         df = df.dropna(subset=['findings', 'impression'], how='any')
 
@@ -127,8 +127,9 @@ class VariableCXR(SingleCXR):
         df = df[df.study_id.map(df.study_id.value_counts()) <= self.max_images_per_study]
 
         if stage == 'fit' or stage is None:
-            self.train_set = StudyIDSubset(
+            self.train_set = PreviousReportSubset(
                 df=df.loc[df['split'] == 'train'],
+                history=history.loc[history['split'] == 'train'],
                 dataset_dir=self.mimic_cxr_dir,
                 transforms=self.train_transforms,
             )
@@ -139,8 +140,9 @@ class VariableCXR(SingleCXR):
             )
 
         if stage == 'fit' or stage == 'validate' or stage is None:
-            self.val_set = StudyIDSubset(
+            self.val_set = PreviousReportSubset(
                 df=df.loc[df['split'] == 'validate'],
+                history=history.loc[history['split'] == 'validate'],
                 dataset_dir=self.mimic_cxr_dir,
                 transforms=self.test_transforms,
             )
@@ -151,8 +153,9 @@ class VariableCXR(SingleCXR):
             )
 
         if stage == 'test' or stage is None:
-            self.test_set = StudyIDSubset(
+            self.test_set = PreviousReportSubset(
                 df=df.loc[df['split'] == 'test'],
+                history=history.loc[history['split'] == 'test'],
                 dataset_dir=self.mimic_cxr_dir,
                 transforms=self.test_transforms,
             )
@@ -162,30 +165,27 @@ class VariableCXR(SingleCXR):
                 f'& {self.test_set.df.study_id.nunique()}.',
             )
 
-    @staticmethod
-    def collate_fn(batch):
-        """
-        https://pytorch.org/docs/stable/data.html#working-with-collate-fn
-        """
-
-        batch = {j: [i[j] for i in batch] for j in batch[0]}
-        batch['dicom_study_ids'] = [j for i in batch['dicom_study_ids'] for j in i]
-        batch['images'] = torch.cat(batch['images'], dim=0)
-
-        return batch
-
-    def forward(self, images, dicom_study_ids, decoder_input_ids, decoder_attention_mask, decoder_token_type_ids):
+    def forward(
+            self, 
+            images, 
+            dicom_study_ids, 
+            decoder_input_ids, 
+            decoder_attention_mask, 
+            decoder_token_type_ids,
+            decoder_position_ids,
+        ):
         """
         https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#forward
         """
 
-        # Teacher forcing: labels are given as input:
+        # Teacher forcing; labels are given as input:
         outputs = self.encoder_decoder(
             pixel_values=images,
             dicom_study_ids=dicom_study_ids,
             decoder_input_ids=decoder_input_ids,
             decoder_attention_mask=decoder_attention_mask,
             decoder_token_type_ids=decoder_token_type_ids,
+            decoder_position_ids=decoder_position_ids,
             return_dict=True,
         )
 
@@ -197,23 +197,58 @@ class VariableCXR(SingleCXR):
         """
 
         # Tokenize report:
-        tokenized = self.encoder_decoder.tokenize_report_teacher_forcing(
-            batch['findings'], batch['impression'], self.tokenizer, self.decoder_max_len,
-        )
-        token_type_ids = self.encoder_decoder.token_ids_to_token_type_ids(tokenized['decoder_input_ids'], [self.tokenizer.sep_token_id])
+        tokenized = self.encoder_decoder.tokenize_report_teacher_forcing(batch['findings'], batch['impression'], self.tokenizer, self.decoder_max_len)
 
-        # Inference:
+        # Tokenize prompt:
+        prompt = self.encoder_decoder.tokenize_prompt(batch['previous_findings'], batch['previous_impression'], self.tokenizer, self.decoder_max_len)
+
+        # Joint the token identifiers:
+        decoder_input_ids = torch.cat(
+            [prompt['input_ids'], tokenized['decoder_input_ids']], dim=1,
+        )
+        decoder_attention_mask = torch.cat(
+            [prompt['attention_mask'], tokenized['decoder_attention_mask']], dim=1,
+        )
+
+        # Get the position identifiers:
+        decoder_position_ids = torch.nn.functional.relu(
+            torch.cumsum(decoder_attention_mask, dim=1, dtype=torch.int64) - 1
+        )
+
+        # Get token type identifiers:
+        token_type_ids = self.encoder_decoder.token_ids_to_token_type_ids(
+            decoder_input_ids, 
+            [
+                self.tokenizer.additional_special_tokens_ids[
+                    self.tokenizer.additional_special_tokens.index('[PMT-SEP]')
+                ],
+                self.tokenizer.bos_token_id,
+                self.tokenizer.sep_token_id,
+            ],
+            [0, 1, 0, 1]
+        )
+
+        # Inference
         y_hat = self(            
-            batch['images'], 
-            batch['dicom_study_ids'],
-            tokenized['decoder_input_ids'],
-            tokenized['decoder_attention_mask'], 
-            token_type_ids,
+            images=batch['images'], 
+            dicom_study_ids=batch['dicom_study_ids'], 
+            decoder_input_ids=decoder_input_ids, 
+            decoder_attention_mask=decoder_attention_mask, 
+            decoder_token_type_ids=token_type_ids,
+            decoder_position_ids=decoder_position_ids,
+        )
+
+        # Add padding to account for prompt:
+        label_ids = F.pad(
+            tokenized['label_ids'],
+            (y_hat.shape[1] - tokenized['label_ids'].shape[1], 0, 0, 0),
+            'constant',
+            self.tokenizer.pad_token_id,
         )
 
         # Loss:
         loss = F.cross_entropy(
-            y_hat.permute([0, 2, 1]), tokenized['label_ids'], ignore_index=self.tokenizer.pad_token_id,
+            y_hat.permute([0, 2, 1]), label_ids, ignore_index=self.tokenizer.pad_token_id,
         )
 
         # Logging:
@@ -224,27 +259,44 @@ class VariableCXR(SingleCXR):
 
     def validation_step(self, batch, batch_idx):
         """
-        https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#validation-step
+        Validation step.
+
+        Argument/s:
+            batch - mini-batch from the validation set DataLoader.
+            batch_idx - batch idx of each example in the mini-batch.
         """
+
+        # Tokenize prompt:
+        prompt = self.encoder_decoder.tokenize_prompt(
+            batch['previous_findings'], batch['previous_impression'], self.tokenizer, self.decoder_max_len,  add_bos_token_id=True,
+        )
 
         # Greedy search:
         output_ids = self.encoder_decoder.generate(
             pixel_values=batch['images'],
-            special_token_ids=[self.tokenizer.sep_token_id],
             dicom_study_ids=batch['dicom_study_ids'], 
-            max_length=self.decoder_max_len,
+            decoder_input_ids=prompt['input_ids'],
+            special_token_ids=[
+                self.tokenizer.additional_special_tokens_ids[
+                    self.tokenizer.additional_special_tokens.index('[PMT-SEP]')
+                ],
+                self.tokenizer.bos_token_id,
+                self.tokenizer.sep_token_id,
+            ],            
+            max_length=self.decoder_max_len + prompt['input_ids'].shape[1],
             bos_token_id=self.tokenizer.bos_token_id,
-            eos_token_id=self.tokenizer.eos_token_id, 
+            eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.pad_token_id,
+            mask_token_id=self.tokenizer.pad_token_id,
             num_beams=1,
             return_dict_in_generate=True,
             use_cache=True,
         )['sequences']
 
-        # Findings and impression sections:
-        findings, impression = self.encoder_decoder.split_and_decode_sections(
+        # Findings and impression sections (exclude previous impression section):
+        _, findings, impression = self.encoder_decoder.split_and_decode_sections(
             output_ids,
-            [self.tokenizer.sep_token_id, self.tokenizer.eos_token_id],
+            [self.tokenizer.bos_token_id, self.tokenizer.sep_token_id, self.tokenizer.eos_token_id],
             self.tokenizer,
         )
 
@@ -259,7 +311,7 @@ class VariableCXR(SingleCXR):
                 )
             elif 'impression' in i:
                 getattr(self, i).update(
-                    impression, [[j] for j in batch['impression']], study_ids=batch['study_ids'],
+                    impression, [[j] for j in batch['impression']],  study_ids=batch['study_ids'],
                 )
             elif 'report' in i:
                 getattr(self, i).update(
@@ -269,21 +321,42 @@ class VariableCXR(SingleCXR):
                 )
             else:
                 raise ValueError(f'{i} must contain findings, impression, or report')
-            
+
     def test_step(self, batch, batch_idx):
         """
-        https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#test-step
+        Test step.
+
+        Argument/s:
+            batch - mini-batch from the test set DataLoader.
+            batch_idx - batch idx of each example in the mini-batch.
         """
+
+        # Tokenize prompt:
+        prompt = self.encoder_decoder.tokenize_prompt(
+            batch['previous_findings'], 
+            batch['previous_impression'], 
+            self.tokenizer, 
+            self.decoder_max_len, 
+            add_bos_token_id=True,
+        )
 
         # Beam search:
         output_ids = self.encoder_decoder.generate(
             pixel_values=batch['images'],
-            special_token_ids=[self.tokenizer.sep_token_id],
             dicom_study_ids=batch['dicom_study_ids'], 
-            max_length=self.decoder_max_len,
+            decoder_input_ids=prompt['input_ids'],
+            special_token_ids=[
+                self.tokenizer.additional_special_tokens_ids[
+                    self.tokenizer.additional_special_tokens.index('[PMT-SEP]')
+                ],
+                self.tokenizer.bos_token_id,
+                self.tokenizer.sep_token_id,
+            ],            
+            max_length=self.decoder_max_len + prompt_ids.shape[1],
             bos_token_id=self.tokenizer.bos_token_id,
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.pad_token_id,
+            mask_token_id=self.tokenizer.pad_token_id,
             num_beams=self.num_test_beams,
             return_dict_in_generate=True,
             use_cache=True,
@@ -292,11 +365,10 @@ class VariableCXR(SingleCXR):
         # Log report token identifier:
         self.test_report_ids_logger.update(output_ids, study_ids=batch['study_ids'])
 
-        # Findings and impression sections:
-        findings, impression = self.encoder_decoder.split_and_decode_sections(
+        # Findings and impression sections (exclude previous impression section):
+        _, findings, impression = self.split_and_decode_sections(
             output_ids,
-            [self.tokenizer.sep_token_id, self.tokenizer.eos_token_id],
-            self.tokenizer,
+            [self.tokenizer.bos_token_id, self.tokenizer.sep_token_id, self.tokenizer.eos_token_id],
         )
 
         # Log reports:
@@ -320,4 +392,5 @@ class VariableCXR(SingleCXR):
                 )
             else:
                 raise ValueError(f'{i} must contain findings, impression, or report')
-            
+
+

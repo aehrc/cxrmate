@@ -3,6 +3,7 @@ from typing import Any, Optional, Tuple, Union
 
 import torch
 import transformers
+from peft import LoraConfig, TaskType, get_peft_config, get_peft_model
 from torch.nn import CrossEntropyLoss
 from transformers import PreTrainedTokenizerFast, VisionEncoderDecoderModel
 from transformers.configuration_utils import PretrainedConfig
@@ -109,7 +110,7 @@ class VariableCvtWithProjectionHead(transformers.CvtPreTrainedModel):
         )
     
 
-class VariableCXREncoderDecoderModel(VisionEncoderDecoderModel):
+class LongitudinalPromptVariableCXREncoderDecoderModel(VisionEncoderDecoderModel):
 
     config_class = VisionEncoderDecoderConfig
     base_model_prefix = "vision_encoder_decoder"
@@ -121,6 +122,7 @@ class VariableCXREncoderDecoderModel(VisionEncoderDecoderModel):
         config: Optional[PretrainedConfig] = None,
         encoder: Optional[PreTrainedModel] = None,
         decoder: Optional[PreTrainedModel] = None,
+        encoder_decoder_ckpt_path: Optional[str] = None,
     ):
 
         if decoder:
@@ -165,8 +167,24 @@ class VariableCXREncoderDecoderModel(VisionEncoderDecoderModel):
         self.encoder.config = self.config.encoder
         self.decoder.config = self.config.decoder
 
-        # config.add_cross_attention = True
-        # config.is_decoder = True
+        # Load variable checkpoint:
+        if encoder_decoder_ckpt_path:
+            self.load_state_dict(torch.load(encoder_decoder_ckpt_path)['state_dict'])
+
+        # Freeze the encoder:
+        for p in self.encoder.parameters():
+            p.requires_grad = False
+            
+        # Freeze the decoder and add LoRA:
+        peft_config = LoraConfig(
+            inference_mode=False, 
+            r=8, 
+            lora_alpha=32, 
+            lora_dropout=0.1, 
+            target_modules='bert.encoder.layer.[0-9]+.attention.self.(query|key)',
+        )
+        self.decoder = get_peft_model(self.decoder, peft_config)
+        self.decoder.print_trainable_parameters()
 
     def forward(
         self,
@@ -204,36 +222,6 @@ class VariableCXREncoderDecoderModel(VisionEncoderDecoderModel):
                 return_dict=return_dict,
                 **kwargs_encoder,
             )  # CvT does not support output_attentions.
-
-            # Stack visual features from each study:
-            mbatch_size = len(set(dicom_study_ids))
-            max_images = dicom_study_ids.count(max(dicom_study_ids, key=dicom_study_ids.count))
-            feature_size = encoder_outputs.projected_last_hidden_state.shape[-1]
-            spatial_positions = encoder_outputs.projected_last_hidden_state.shape[-2]
-
-            # Create attention mask and visual features:
-            self.encoder_attention_mask = torch.zeros(mbatch_size, max_images * spatial_positions).to(self.device)
-            visual_features = torch.zeros(
-                mbatch_size, 
-                max_images * spatial_positions, 
-                feature_size, 
-                dtype=encoder_outputs.projected_last_hidden_state.dtype,
-            ).to(self.device)
-
-            # There has to be a better way to do the following:
-            row_count, column_count = 0, 0
-            previous = dicom_study_ids[0]
-            for i, j in enumerate(dicom_study_ids):
-                if j != previous:
-                    row_count += 1
-                    column_count = 0
-                self.encoder_attention_mask[row_count, column_count:column_count + spatial_positions] = 1.0
-                visual_features[row_count, column_count:column_count + spatial_positions] = encoder_outputs.projected_last_hidden_state[i]
-                column_count += spatial_positions
-                previous = j
-
-            encoder_outputs.projected_last_hidden_state = visual_features
-
         elif isinstance(encoder_outputs, tuple):
             encoder_outputs = BaseModelOutput(*encoder_outputs)
 
@@ -243,7 +231,7 @@ class VariableCXREncoderDecoderModel(VisionEncoderDecoderModel):
             input_ids=decoder_input_ids,
             attention_mask=decoder_attention_mask,
             encoder_hidden_states=encoder_hidden_states,
-            encoder_attention_mask=self.encoder_attention_mask,
+            encoder_attention_mask=encoder_outputs.attention_mask,
             inputs_embeds=decoder_inputs_embeds,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
@@ -282,6 +270,7 @@ class VariableCXREncoderDecoderModel(VisionEncoderDecoderModel):
         self,
         input_ids,
         special_token_ids,
+        mask_token_id,
         past_key_values=None,
         attention_mask=None,
         use_cache=None,
@@ -294,19 +283,23 @@ class VariableCXREncoderDecoderModel(VisionEncoderDecoderModel):
         """
 
         decoder_inputs = self.decoder.prepare_inputs_for_generation(input_ids, past_key_values=past_key_values)
-        decoder_attention_mask = decoder_inputs['attention_mask'] if 'attention_mask' in decoder_inputs else None
+        decoder_attention_mask = (input_ids != mask_token_id).int()
+        decoder_position_ids = torch.nn.functional.relu(
+            torch.cumsum(decoder_attention_mask, dim=1, dtype=torch.int64) - 1
+        )
 
         if not past_key_values:
-            token_type_ids = self.token_ids_to_token_type_ids(input_ids, special_token_ids)
+            token_type_ids = self.token_ids_to_token_type_ids(input_ids, special_token_ids, [0, 1, 0, 1])
         else:
-            token_type_ids = self.token_ids_to_token_type_ids_past(input_ids, special_token_ids)
+            token_type_ids = self.token_ids_to_token_type_ids_past(input_ids, special_token_ids, [0, 1, 0, 1])
+            decoder_position_ids = decoder_position_ids[:, -1:]
 
         input_dict = {
             'attention_mask': attention_mask,
             'decoder_attention_mask': decoder_attention_mask,
             'decoder_input_ids': decoder_inputs['input_ids'],
-            'dicom_study_ids': kwargs['dicom_study_ids'],
             'decoder_token_type_ids': token_type_ids,
+            'decoder_position_ids': decoder_position_ids,
             'encoder_outputs': encoder_outputs,
             'past_key_values': decoder_inputs['past_key_values'],
             'use_cache': use_cache,
@@ -475,3 +468,59 @@ class VariableCXREncoderDecoderModel(VisionEncoderDecoderModel):
                 sections[j].append(section_string)
 
         return tuple(sections.values())
+
+    def tokenize_prompt(
+        self, 
+        previous_findings: str, 
+        previous_impression: str, 
+        tokenizer: PreTrainedTokenizerFast, 
+        max_len: int,
+        add_bos_token_id: bool = False,
+    ):
+        """
+        Tokenize the sections of the previous report to be used as a prompt.
+
+        Argument/s:
+            previous_findings - previous findings section.
+            previous_impression - previous impression section.
+            tokenizer - Hugging Face tokenizer.
+            max_len - maximum number of tokens.
+            add_bos_token_id - whether to add the BOS token identifier to the prompt.
+
+        Returns:
+            input_ids - the input identifiers for the previous impression.
+            attention_mask - the attention mask for the previous impression
+        """
+
+        # Use [NPF]/[NPI] special token if no previous findings/impression:
+        previous_findings = ['[NPF]' if not i else i for i in previous_findings]
+        previous_impression = ['[NPI]' if not i else i for i in previous_impression]
+
+        # Prepare the sections for the tokenizer by placing special tokens:
+        previous_sections = [
+            f'[PMT]{i}[PMT-SEP]{j}{tokenizer.bos_token}' if add_bos_token_id else f'[PMT]{i}[PMT-SEP]{j}' \
+                for i, j in zip(previous_findings, previous_impression)
+        ]
+
+        # Tokenize:
+        previous_sections = tokenizer(
+            previous_sections,
+            padding='longest',
+            truncation=True,
+            max_length=max_len,
+            return_tensors='pt',
+            return_token_type_ids=False,
+            add_special_tokens=False,
+        ).to(self.device)
+
+        # Ensure BOS token identifier is at the end of the input_ids:
+        if previous_sections.input_ids.shape[1] == max_len:
+            previous_sections.input_ids[:, -1] = torch.where(
+                previous_sections.attention_mask[:, -1] == 1,
+                tokenizer.bos_token_id,
+                previous_sections.input_ids[:, -1],
+            ) 
+
+        assert previous_sections.input_ids.shape[1] <= max_len
+
+        return {'input_ids': previous_sections.input_ids, 'attention_mask': previous_sections.attention_mask}

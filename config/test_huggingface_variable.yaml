@@ -1,8 +1,5 @@
 defaults:
-  - huggingface_single
+  - train_single
   - _self_
 
-module: modules.lightning_modules.variable
-definition: VariableCXR
-
-mbatch_size: 32
+test_ckpt_name: 'aehrc/mimic-cxr-report-gen-single'

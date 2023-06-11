@@ -94,6 +94,10 @@ class SingleCXREncoderDecoderModel(VisionEncoderDecoderModel):
         decoder: Optional[PreTrainedModel] = None,
     ):
 
+        if decoder:
+            assert decoder.config.add_cross_attention, '"add_cross_attention" must be True for the given decoder'
+            assert decoder.config.is_decoder, '"is_decoder" must be True for the given decoder'
+
         if config is None and (encoder is None or decoder is None):
             raise ValueError("Either a configuration or an encoder and a decoder has to be provided.")
         if config is None:
@@ -117,9 +121,6 @@ class SingleCXREncoderDecoderModel(VisionEncoderDecoderModel):
 
         self.encoder = encoder
         self.decoder = decoder
-
-        assert self.decoder.config.add_cross_attention
-        assert self.decoder.config.is_decoder
 
         if self.encoder.config.to_dict() != self.config.encoder.to_dict():
             logger.warning(

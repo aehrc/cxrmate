@@ -6,7 +6,7 @@ import warnings
 import numpy as np
 import torch
 
-from task.mimic_cxr.datasets.study_id import StudyIDSubset
+from data.study_id import StudyIDSubset
 
 
 class PreviousReportSubset(StudyIDSubset):

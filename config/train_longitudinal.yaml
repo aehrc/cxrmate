@@ -1,0 +1,10 @@
+defaults:
+  - train_single
+  - _self_
+
+module: modules.lightning_modules.prompt
+definition: GTPrompt
+
+mbatch_size: 2
+
+variable_ckpt_name: 'aehrc/mimic-cxr-report-gen-single'
