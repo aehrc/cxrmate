@@ -6,6 +6,7 @@ module: modules.lightning_modules.single
 definition: SingleCXR
 
 strategy: 'ddp'
+devices: 1
 
 sections_to_evaluate: ['report']
 max_images_per_study: 5
