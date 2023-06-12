@@ -1,0 +1,5 @@
+defaults:
+  - train_longitudinal
+  - _self_
+
+test_ckpt_name: 'aehrc/cxrmate-tf'

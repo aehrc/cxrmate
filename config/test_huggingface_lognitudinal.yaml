@@ -1,5 +1,0 @@
-defaults:
-  - train_longitudinal
-  - _self_
-
-test_ckpt_name: 'aehrc/mimic-cxr-report-gen-single'
