@@ -63,7 +63,7 @@ class GTPrompt(VariableCXR):
         # Encoder-to-decoder model:
         if self.warm_start_modules:
             self.encoder_decoder = LongitudinalPromptVariableCXREncoderDecoderModel(
-                config=config, encoder_decoder_ckpt_path='aehrc/mimic-cxr-report-gen-single',
+                config=config, encoder_decoder_ckpt_path=None,
             )
         else:
             self.encoder_decoder = LongitudinalPromptVariableCXREncoderDecoderModel(config=config)
@@ -168,7 +168,6 @@ class GTPrompt(VariableCXR):
     def forward(
             self, 
             images, 
-            dicom_study_ids, 
             decoder_input_ids, 
             decoder_attention_mask, 
             decoder_token_type_ids,
@@ -181,7 +180,6 @@ class GTPrompt(VariableCXR):
         # Teacher forcing; labels are given as input:
         outputs = self.encoder_decoder(
             pixel_values=images,
-            dicom_study_ids=dicom_study_ids,
             decoder_input_ids=decoder_input_ids,
             decoder_attention_mask=decoder_attention_mask,
             decoder_token_type_ids=decoder_token_type_ids,
@@ -231,7 +229,6 @@ class GTPrompt(VariableCXR):
         # Inference
         y_hat = self(            
             images=batch['images'], 
-            dicom_study_ids=batch['dicom_study_ids'], 
             decoder_input_ids=decoder_input_ids, 
             decoder_attention_mask=decoder_attention_mask, 
             decoder_token_type_ids=token_type_ids,
@@ -274,7 +271,6 @@ class GTPrompt(VariableCXR):
         # Greedy search:
         output_ids = self.encoder_decoder.generate(
             pixel_values=batch['images'],
-            dicom_study_ids=batch['dicom_study_ids'], 
             decoder_input_ids=prompt['input_ids'],
             special_token_ids=[
                 self.tokenizer.additional_special_tokens_ids[
@@ -343,7 +339,6 @@ class GTPrompt(VariableCXR):
         # Beam search:
         output_ids = self.encoder_decoder.generate(
             pixel_values=batch['images'],
-            dicom_study_ids=batch['dicom_study_ids'], 
             decoder_input_ids=prompt['input_ids'],
             special_token_ids=[
                 self.tokenizer.additional_special_tokens_ids[
@@ -352,7 +347,7 @@ class GTPrompt(VariableCXR):
                 self.tokenizer.bos_token_id,
                 self.tokenizer.sep_token_id,
             ],            
-            max_length=self.decoder_max_len + prompt_ids.shape[1],
+            max_length=self.decoder_max_len + prompt['input_ids'].shape[1],
             bos_token_id=self.tokenizer.bos_token_id,
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.pad_token_id,
@@ -366,9 +361,10 @@ class GTPrompt(VariableCXR):
         self.test_report_ids_logger.update(output_ids, study_ids=batch['study_ids'])
 
         # Findings and impression sections (exclude previous impression section):
-        _, findings, impression = self.split_and_decode_sections(
+        _, findings, impression = self.encoder_decoder.split_and_decode_sections(
             output_ids,
             [self.tokenizer.bos_token_id, self.tokenizer.sep_token_id, self.tokenizer.eos_token_id],
+            self.tokenizer
         )
 
         # Log reports:

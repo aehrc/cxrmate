@@ -5,13 +5,14 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 import transformers
+from torch.utils.data import DataLoader
 from torchvision import transforms
 from transformers.modeling_outputs import BaseModelOutput
 
 from data.study_id import StudyIDSubset
 from modules.lightning_modules.single import SingleCXR
 from modules.transformers.variable_model.modelling_variable import (
-    VariableCvtWithProjectionHead, CvtWithProjectionHeadConfig,
+    CvtWithProjectionHeadConfig, VariableCvtWithProjectionHead,
     VariableCXREncoderDecoderModel)
 
 
@@ -169,12 +170,11 @@ class VariableCXR(SingleCXR):
         """
 
         batch = {j: [i[j] for i in batch] for j in batch[0]}
-        batch['dicom_study_ids'] = [j for i in batch['dicom_study_ids'] for j in i]
-        batch['images'] = torch.cat(batch['images'], dim=0)
+        batch['images'] = torch.nn.utils.rnn.pad_sequence(batch['images'], batch_first=True, padding_value=0.0)
 
         return batch
 
-    def forward(self, images, dicom_study_ids, decoder_input_ids, decoder_attention_mask, decoder_token_type_ids):
+    def forward(self, images, decoder_input_ids, decoder_attention_mask, decoder_token_type_ids):
         """
         https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#forward
         """
@@ -182,7 +182,6 @@ class VariableCXR(SingleCXR):
         # Teacher forcing: labels are given as input:
         outputs = self.encoder_decoder(
             pixel_values=images,
-            dicom_study_ids=dicom_study_ids,
             decoder_input_ids=decoder_input_ids,
             decoder_attention_mask=decoder_attention_mask,
             decoder_token_type_ids=decoder_token_type_ids,
@@ -205,7 +204,6 @@ class VariableCXR(SingleCXR):
         # Inference:
         y_hat = self(            
             batch['images'], 
-            batch['dicom_study_ids'],
             tokenized['decoder_input_ids'],
             tokenized['decoder_attention_mask'], 
             token_type_ids,
@@ -231,7 +229,6 @@ class VariableCXR(SingleCXR):
         output_ids = self.encoder_decoder.generate(
             pixel_values=batch['images'],
             special_token_ids=[self.tokenizer.sep_token_id],
-            dicom_study_ids=batch['dicom_study_ids'], 
             max_length=self.decoder_max_len,
             bos_token_id=self.tokenizer.bos_token_id,
             eos_token_id=self.tokenizer.eos_token_id, 
@@ -279,7 +276,6 @@ class VariableCXR(SingleCXR):
         output_ids = self.encoder_decoder.generate(
             pixel_values=batch['images'],
             special_token_ids=[self.tokenizer.sep_token_id],
-            dicom_study_ids=batch['dicom_study_ids'], 
             max_length=self.decoder_max_len,
             bos_token_id=self.tokenizer.bos_token_id,
             eos_token_id=self.tokenizer.eos_token_id,

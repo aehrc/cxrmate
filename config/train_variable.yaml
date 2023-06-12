@@ -1,5 +1,5 @@
 defaults:
-  - test_huggingface_single
+  - train_single
   - _self_
 
 module: modules.lightning_modules.variable

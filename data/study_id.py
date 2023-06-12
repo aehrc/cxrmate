@@ -38,7 +38,4 @@ class StudyIDSubset(DICOMIDSubset):
         # Get example dict from parent class:
         example_dict = DICOMIDSubset.__getitem__(self, index)
 
-        # Study identifier for each DICOM image:
-        example_dict['dicom_study_ids'] = [example_dict['study_ids']] * example_dict['images'].shape[0]
-
         return example_dict

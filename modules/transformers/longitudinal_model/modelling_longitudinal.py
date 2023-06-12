@@ -58,55 +58,36 @@ class VariableCvtWithProjectionHead(transformers.CvtPreTrainedModel):
     def forward(
         self,
         pixel_values: Optional[torch.Tensor] = None,
-        dicom_study_ids: Optional[Any] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
     ) -> Union[Tuple, ModelOutputWithProjectionEmbedding]:
 
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
+        # Flatten the batch and study_id dimensions:
         outputs = self.cvt(
-            pixel_values,
+            pixel_values.view(-1, *pixel_values.shape[2:]),
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
 
-        projection = self.projection_head(
-            torch.permute(torch.flatten(outputs.last_hidden_state, 2), [0, 2, 1]),
-        )
+        # Flatten h x w:
+        last_hidden_state = torch.flatten(outputs.last_hidden_state, 2)
 
-        # Stack visual features from each study:
-        mbatch_size = len(set(dicom_study_ids))
-        max_images = dicom_study_ids.count(max(dicom_study_ids, key=dicom_study_ids.count))
-        feature_size = projection.shape[-1]
-        spatial_positions = projection.shape[-2]
+        # Project the features for each spatial position to the decoder's hidden size:
+        projection = self.projection_head(torch.permute(last_hidden_state, [0, 2, 1]))
 
-        # Create attention mask and visual features:
-        attention_mask = torch.zeros(mbatch_size, max_images * spatial_positions).to(self.device)
-        visual_features = torch.zeros(
-            mbatch_size, 
-            max_images * spatial_positions, 
-            feature_size, 
-            dtype=projection.dtype,
-        ).to(self.device)
+        # Concatenate the features for each chest X-ray:
+        projection = projection.view(pixel_values.shape[0], -1, projection.shape[-1])
 
-        # There has to be a better way to do the following:
-        row_count, column_count = 0, 0
-        previous = dicom_study_ids[0]
-        for i, j in enumerate(dicom_study_ids):
-            if j != previous:
-                row_count += 1
-                column_count = 0
-            attention_mask[row_count, column_count:column_count + spatial_positions] = 1.0
-            visual_features[row_count, column_count:column_count + spatial_positions] = projection[i]
-            column_count += spatial_positions
-            previous = j
+        # Derive the attention mask from the pixel values:
+        attention_mask = (pixel_values[:, :, 0, 0, 0] != 0.0).repeat_interleave(last_hidden_state.shape[-1], dim=1)
 
         if not return_dict:
-            return visual_features
+            return projection
 
         return ModelOutputWithProjectionEmbedding(
-            projected_last_hidden_state=visual_features, attention_mask=attention_mask,
+            projected_last_hidden_state=projection, attention_mask=attention_mask,
         )
     
 
@@ -189,7 +170,6 @@ class LongitudinalPromptVariableCXREncoderDecoderModel(VisionEncoderDecoderModel
     def forward(
         self,
         pixel_values: Optional[torch.FloatTensor] = None,
-        dicom_study_ids: Optional[Any] = None,
         decoder_input_ids: Optional[torch.LongTensor] = None,
         decoder_attention_mask: Optional[torch.BoolTensor] = None,
         encoder_outputs: Optional[Tuple[torch.FloatTensor]] = None,
@@ -217,7 +197,6 @@ class LongitudinalPromptVariableCXREncoderDecoderModel(VisionEncoderDecoderModel
 
             encoder_outputs = self.encoder(
                 pixel_values,
-                dicom_study_ids=dicom_study_ids,
                 output_hidden_states=output_hidden_states,
                 return_dict=return_dict,
                 **kwargs_encoder,
@@ -303,7 +282,6 @@ class LongitudinalPromptVariableCXREncoderDecoderModel(VisionEncoderDecoderModel
             'encoder_outputs': encoder_outputs,
             'past_key_values': decoder_inputs['past_key_values'],
             'use_cache': use_cache,
-            'dicom_study_ids': kwargs['dicom_study_ids'],
         }
         return input_dict
     

@@ -1,6 +1,15 @@
-exp_dir: experiments
-dataset_dir: datasets
-ckpt_zoo_dir: checkpoints
+defaults:
+  - //home/anicolson/config/1gpu.yaml@_global_
+  - //home/anicolson/config/paths.yaml@_global_
+  - _self_
+
+venv_path: /software/projects/pawsey0864/anicolson/environments/multimodal_23/bin/activate
+
+
+# exp_dir: experiments
+# dataset_dir: datasets
+# ckpt_zoo_dir: checkpoints
+
 
 module: modules.lightning_modules.single
 definition: SingleCXR
