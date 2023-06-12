@@ -1,0 +1,20 @@
+{
+  "additional_special_tokens": [
+    "[NF]",
+    "[NI]",
+    "[PMT]",
+    "[PMT-SEP]",
+    "[NPF]",
+    "[NPI]"
+  ],
+  "bos_token": "[BOS]",
+  "clean_up_tokenization_spaces": true,
+  "cls_token": "[BOS]",
+  "eos_token": "[EOS]",
+  "mask_token": "[MASK]",
+  "model_max_length": 1000000000000000019884624838656,
+  "pad_token": "[PAD]",
+  "sep_token": "[SEP]",
+  "tokenizer_class": "PreTrainedTokenizerFast",
+  "unk_token": "[UNK]"
+}
