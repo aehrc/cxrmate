@@ -1,11 +1,13 @@
 import os
+import warnings
 from typing import Any, Optional, Tuple, Union
 
 import torch
 import transformers
 from peft import LoraConfig, TaskType, get_peft_config, get_peft_model
 from torch.nn import CrossEntropyLoss
-from transformers import PreTrainedTokenizerFast, VisionEncoderDecoderModel
+from transformers import (AutoModel, PreTrainedTokenizerFast,
+                          VisionEncoderDecoderModel)
 from transformers.configuration_utils import PretrainedConfig
 from transformers.modeling_outputs import BaseModelOutput, Seq2SeqLMOutput
 from transformers.modeling_utils import PreTrainedModel
@@ -103,7 +105,7 @@ class LongitudinalPromptVariableCXREncoderDecoderModel(VisionEncoderDecoderModel
         config: Optional[PretrainedConfig] = None,
         encoder: Optional[PreTrainedModel] = None,
         decoder: Optional[PreTrainedModel] = None,
-        encoder_decoder_ckpt_path: Optional[str] = None,
+        encoder_decoder_ckpt_name: Optional[str] = None,
     ):
 
         if decoder:
@@ -149,8 +151,11 @@ class LongitudinalPromptVariableCXREncoderDecoderModel(VisionEncoderDecoderModel
         self.decoder.config = self.config.decoder
 
         # Load variable checkpoint:
-        if encoder_decoder_ckpt_path:
-            self.load_state_dict(torch.load(encoder_decoder_ckpt_path)['state_dict'])
+        if encoder_decoder_ckpt_name:
+            encoder_decoder = AutoModel.from_pretrained(encoder_decoder_ckpt_name, trust_remote_code=True)
+            self.load_state_dict(encoder_decoder.state_dict())
+        else:
+            warnings.warn('The encoder-to-decoder model was not warm-started before applying low-rank approximation.')
 
         # Freeze the encoder:
         for p in self.encoder.parameters():

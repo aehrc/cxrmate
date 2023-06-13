@@ -3,8 +3,8 @@
 import pandas as pd
 from torch.utils.data import DataLoader
 
-from task.mimic_cxr.datasets.prompt import PreviousReportSubset
-from task.mimic_cxr.model.report_gen.any.prompt import GTPrompt
+from data.prompt import PreviousReportSubset
+from modules.lightning_modules.longitudinal.gt_prompt import GTPrompt
 
 
 class GeneratedPrompt(GTPrompt):
@@ -92,22 +92,40 @@ class GeneratedPrompt(GTPrompt):
         """
 
         # Tokenize prompt:
-        prompt = self.tokenize_prompt(
-            batch['previous_findings'], batch['previous_impression'], add_bos_token_id=True,
+        prompt = self.encoder_decoder.tokenize_prompt(
+            batch['previous_findings'], 
+            batch['previous_impression'], 
+            self.tokenizer, 
+            self.decoder_max_len,  
+            add_bos_token_id=True,
         )
 
         # Greedy search:
-        output_ids = self.generate(
-            num_beams=1, 
-            dicom_study_ids=batch['dicom_study_ids'], 
-            prompt_ids=prompt['input_ids'],
-            images=batch['images'],
-        )
+        output_ids = self.encoder_decoder.generate(
+            pixel_values=batch['images'],
+            decoder_input_ids=prompt['input_ids'],
+            special_token_ids=[
+                self.tokenizer.additional_special_tokens_ids[
+                    self.tokenizer.additional_special_tokens.index('[PMT-SEP]')
+                ],
+                self.tokenizer.bos_token_id,
+                self.tokenizer.sep_token_id,
+            ],            
+            max_length=self.decoder_max_len + prompt['input_ids'].shape[1],
+            bos_token_id=self.tokenizer.bos_token_id,
+            eos_token_id=self.tokenizer.eos_token_id,
+            pad_token_id=self.tokenizer.pad_token_id,
+            mask_token_id=self.tokenizer.pad_token_id,
+            num_beams=1,
+            return_dict_in_generate=True,
+            use_cache=True,
+        )['sequences']
 
         # Findings and impression sections (exclude previous impression section):
-        _, findings, impression = self.split_and_decode_sections(
+        _, findings, impression = self.encoder_decoder.split_and_decode_sections(
             output_ids,
             [self.tokenizer.bos_token_id, self.tokenizer.sep_token_id, self.tokenizer.eos_token_id],
+            self.tokenizer,
         )
 
         # Add the generated sections the dataframe of the test set:
@@ -147,25 +165,43 @@ class GeneratedPrompt(GTPrompt):
         """
 
         # Tokenize prompt:
-        prompt = self.tokenize_prompt(
-            batch['previous_findings'], batch['previous_impression'], add_bos_token_id=True,
+        prompt = self.encoder_decoder.tokenize_prompt(
+            batch['previous_findings'], 
+            batch['previous_impression'], 
+            self.tokenizer, 
+            self.decoder_max_len, 
+            add_bos_token_id=True,
         )
 
         # Beam search:
-        output_ids = self.generate(
-            num_beams=self.num_test_beams, 
-            dicom_study_ids=batch['dicom_study_ids'], 
-            prompt_ids=prompt['input_ids'],
-            images=batch['images'],
-        )
+        output_ids = self.encoder_decoder.generate(
+            pixel_values=batch['images'],
+            decoder_input_ids=prompt['input_ids'],
+            special_token_ids=[
+                self.tokenizer.additional_special_tokens_ids[
+                    self.tokenizer.additional_special_tokens.index('[PMT-SEP]')
+                ],
+                self.tokenizer.bos_token_id,
+                self.tokenizer.sep_token_id,
+            ],            
+            max_length=self.decoder_max_len + prompt['input_ids'].shape[1],
+            bos_token_id=self.tokenizer.bos_token_id,
+            eos_token_id=self.tokenizer.eos_token_id,
+            pad_token_id=self.tokenizer.pad_token_id,
+            mask_token_id=self.tokenizer.pad_token_id,
+            num_beams=self.num_test_beams,
+            return_dict_in_generate=True,
+            use_cache=True,
+        )['sequences']
 
         # Log report token identifier:
         self.test_report_ids_logger.update(output_ids, study_ids=batch['study_ids'])
 
         # Findings and impression sections (exclude previous impression section):
-        _, findings, impression = self.split_and_decode_sections(
+        _, findings, impression = self.encoder_decoder.split_and_decode_sections(
             output_ids,
             [self.tokenizer.bos_token_id, self.tokenizer.sep_token_id, self.tokenizer.eos_token_id],
+            self.tokenizer
         )
 
         # Add the generated sections the dataframe of the test set:

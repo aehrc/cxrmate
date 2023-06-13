@@ -1,23 +1,113 @@
+import os
 from typing import List, Optional
 
 import pandas as pd
 import torch
 import torch.nn.functional as F
+import transformers
+from torchvision import transforms
 from transformers.modeling_outputs import BaseModelOutput
 
-from task.mimic_cxr.datasets.prompt import PreviousReportSubset
-from task.mimic_cxr.model.report_gen.any.single import SingleCXR
-from task.mimic_cxr.model.report_gen.any.variable import VariableCXR
-
+from data.prompt import PreviousReportSubset
+from modules.lightning_modules.variable import VariableCXR
+from modules.transformers.longitudinal_model.modelling_longitudinal import (
+    VariableCvtWithProjectionHead, CvtWithProjectionHeadConfig,
+    LongitudinalPromptVariableCXREncoderDecoderModel)
 
 
 class GTPrompt(VariableCXR):
     """
     Prompt the decoder with the findings and impression section of the previous study.
     """
-    def __init__(self, **kwargs):
-        kwargs['type_vocab_size'] = 4
+    def __init__(self, variable_ckpt_name, lora_rank=8, **kwargs):
+        self.variable_ckpt_name = variable_ckpt_name
+        self.lora_rank = lora_rank
         super().__init__(**kwargs)
+
+    def init_modules(self):
+        """
+        Initialise torch.nn.Modules.
+        """
+
+        encoder_decoder_ckpt_name = 'aehrc/mimic-cxr-report-gen-single'
+
+        # Decoder tokenizer:
+        self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(encoder_decoder_ckpt_name, cache_dir=self.ckpt_zoo_dir)
+        os.environ['TOKENIZERS_PARALLELISM'] = 'false'
+
+        # Print the special tokens:
+        print('Description, Special token, Index')
+        for k, v in self.tokenizer.special_tokens_map.items():
+            if k != 'additional_special_tokens':
+                print(f'{k}, {v}, {getattr(self.tokenizer, k + "_id")}')
+            else:
+                for i, j in zip(self.tokenizer.additional_special_tokens, self.tokenizer.additional_special_tokens_ids):
+                    print(f'additional_special_token, {i}, {j}')
+        
+        # Encoder & decoder config:
+        config_decoder = transformers.BertConfig(
+            vocab_size=len(self.tokenizer),
+            num_hidden_layers=6,
+            type_vocab_size=self.type_vocab_size,
+        )  # BERT as it includes token_type_ids.
+        config_decoder.is_decoder = True
+        config_decoder.add_cross_attention = True
+        encoder_ckpt_name = 'microsoft/cvt-21-384-22k'
+        config_encoder = CvtWithProjectionHeadConfig.from_pretrained(
+            os.path.join(self.ckpt_zoo_dir, encoder_ckpt_name),
+            local_files_only=True,
+            projection_size=config_decoder.hidden_size,
+        )
+        config = transformers.VisionEncoderDecoderConfig.from_encoder_decoder_configs(config_encoder, config_decoder)
+
+        # Encoder-to-decoder model:
+        if self.warm_start_modules:
+            self.encoder_decoder = LongitudinalPromptVariableCXREncoderDecoderModel(
+                config=config, encoder_decoder_ckpt_name=self.variable_ckpt_name,
+            )
+        else:
+            self.encoder_decoder = LongitudinalPromptVariableCXREncoderDecoderModel(config=config)
+
+        # This is to get the pre-processing parameters for the checkpoint, this is not actually used for pre-processing:
+        self.encoder_feature_extractor = transformers.AutoFeatureExtractor.from_pretrained(
+            os.path.join(self.ckpt_zoo_dir, encoder_ckpt_name),
+            local_files_only=True,
+        )
+
+        # Image transformations:
+        self.train_transforms = transforms.Compose(
+            [
+                transforms.Resize(size=self.encoder_feature_extractor.size['shortest_edge']),
+                transforms.RandomCrop(
+                    size=[
+                        self.encoder_feature_extractor.size['shortest_edge'],
+                        self.encoder_feature_extractor.size['shortest_edge'],
+                    ],
+                    pad_if_needed=True,
+                ),
+                transforms.RandomRotation(degrees=5),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=self.encoder_feature_extractor.image_mean,
+                    std=self.encoder_feature_extractor.image_std,
+                ),
+            ]
+        )
+        self.test_transforms = transforms.Compose(
+            [
+                transforms.Resize(size=self.encoder_feature_extractor.size['shortest_edge']),
+                transforms.CenterCrop(size=[
+                    self.encoder_feature_extractor.size['shortest_edge'],
+                    self.encoder_feature_extractor.size['shortest_edge'],
+                ]
+                ),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    mean=self.encoder_feature_extractor.image_mean,
+                    std=self.encoder_feature_extractor.image_std,
+                ),
+            ]
+        )
 
     def setup(self, stage=None):
         """
@@ -78,7 +168,6 @@ class GTPrompt(VariableCXR):
     def forward(
             self, 
             images, 
-            dicom_study_ids, 
             decoder_input_ids, 
             decoder_attention_mask, 
             decoder_token_type_ids,
@@ -87,73 +176,18 @@ class GTPrompt(VariableCXR):
         """
         https://lightning.ai/docs/pytorch/stable/common/lightning_module.html#forward
         """
-        encoder_outputs, attention_mask = self.encoder_forward(images, dicom_study_ids)
 
         # Teacher forcing; labels are given as input:
         outputs = self.encoder_decoder(
+            pixel_values=images,
             decoder_input_ids=decoder_input_ids,
             decoder_attention_mask=decoder_attention_mask,
             decoder_token_type_ids=decoder_token_type_ids,
             decoder_position_ids=decoder_position_ids,
-            attention_mask=attention_mask,
-            encoder_outputs=encoder_outputs,
             return_dict=True,
         )
 
         return outputs.logits
-
-    def generate(
-        self,
-        num_beams: int, 
-        dicom_study_ids: List[int], 
-        prompt_ids: torch.Tensor,
-        images: Optional[torch.Tensor] = None, 
-        encoder_outputs: Optional[BaseModelOutput] = None,
-        attention_mask: Optional[torch.Tensor] = None,
-    ):
-        """
-        Autoregressively generate a prediction.
-
-        Argument/s:
-            num_beams - number of considered beams for the search (one beam is a greedy search).
-            dicom_study_ids - study identifier of each DICOM.
-            prompt_ids - token identifiers of the previous impression section to prompt the next report.
-            images - images for each study.
-            encoder_outputs - outputs of the encoder.
-            attention_mask - attention mask for the cross-attention.
-
-        Returns:
-            Indices of the tokens for the predicted sequence.
-        """
-
-        # Encoder outputs for cross-attention:
-        if encoder_outputs is None:
-            encoder_outputs, attention_mask = self.encoder_forward(images, dicom_study_ids)
-
-        # Generate the report:
-        outputs = self.encoder_decoder.generate(
-            decoder_input_ids=prompt_ids,
-            special_token_ids=[
-                self.tokenizer.additional_special_tokens_ids[
-                    self.tokenizer.additional_special_tokens.index('[PMT-SEP]')
-                ],
-                self.tokenizer.bos_token_id,
-                self.tokenizer.sep_token_id,
-            ],            
-            max_length=self.decoder_max_len + prompt_ids.shape[1],
-            bos_token_id=self.tokenizer.bos_token_id,
-            eos_token_id=self.tokenizer.eos_token_id,
-            pad_token_id=self.tokenizer.pad_token_id,
-            mask_token_id=self.tokenizer.pad_token_id,
-            num_beams=num_beams,
-            return_dict_in_generate=True,
-            use_cache=True,
-            attention_mask=attention_mask,
-            encoder_outputs=encoder_outputs,
-            **self.generation_config,
-        )
-
-        return outputs['sequences']
 
     def training_step(self, batch, batch_idx):
         """
@@ -161,10 +195,10 @@ class GTPrompt(VariableCXR):
         """
 
         # Tokenize report:
-        tokenized = self.tokenize_report_teacher_forcing(batch['findings'], batch['impression'])
+        tokenized = self.encoder_decoder.tokenize_report_teacher_forcing(batch['findings'], batch['impression'], self.tokenizer, self.decoder_max_len)
 
         # Tokenize prompt:
-        prompt = self.tokenize_prompt(batch['previous_findings'], batch['previous_impression'])
+        prompt = self.encoder_decoder.tokenize_prompt(batch['previous_findings'], batch['previous_impression'], self.tokenizer, self.decoder_max_len)
 
         # Joint the token identifiers:
         decoder_input_ids = torch.cat(
@@ -180,7 +214,7 @@ class GTPrompt(VariableCXR):
         )
 
         # Get token type identifiers:
-        token_type_ids = self.token_ids_to_token_type_ids(
+        token_type_ids = self.encoder_decoder.token_ids_to_token_type_ids(
             decoder_input_ids, 
             [
                 self.tokenizer.additional_special_tokens_ids[
@@ -189,12 +223,12 @@ class GTPrompt(VariableCXR):
                 self.tokenizer.bos_token_id,
                 self.tokenizer.sep_token_id,
             ],
+            [0, 1, 0, 1]
         )
 
         # Inference
         y_hat = self(            
             images=batch['images'], 
-            dicom_study_ids=batch['dicom_study_ids'], 
             decoder_input_ids=decoder_input_ids, 
             decoder_attention_mask=decoder_attention_mask, 
             decoder_token_type_ids=token_type_ids,
@@ -230,22 +264,40 @@ class GTPrompt(VariableCXR):
         """
 
         # Tokenize prompt:
-        prompt = self.tokenize_prompt(
-            batch['previous_findings'], batch['previous_impression'], add_bos_token_id=True,
+        prompt = self.encoder_decoder.tokenize_prompt(
+            batch['previous_findings'], 
+            batch['previous_impression'], 
+            self.tokenizer, 
+            self.decoder_max_len,  
+            add_bos_token_id=True,
         )
 
         # Greedy search:
-        output_ids = self.generate(
-            num_beams=1, 
-            dicom_study_ids=batch['dicom_study_ids'], 
-            prompt_ids=prompt['input_ids'],
-            images=batch['images'],
-        )
+        output_ids = self.encoder_decoder.generate(
+            pixel_values=batch['images'],
+            decoder_input_ids=prompt['input_ids'],
+            special_token_ids=[
+                self.tokenizer.additional_special_tokens_ids[
+                    self.tokenizer.additional_special_tokens.index('[PMT-SEP]')
+                ],
+                self.tokenizer.bos_token_id,
+                self.tokenizer.sep_token_id,
+            ],            
+            max_length=self.decoder_max_len + prompt['input_ids'].shape[1],
+            bos_token_id=self.tokenizer.bos_token_id,
+            eos_token_id=self.tokenizer.eos_token_id,
+            pad_token_id=self.tokenizer.pad_token_id,
+            mask_token_id=self.tokenizer.pad_token_id,
+            num_beams=1,
+            return_dict_in_generate=True,
+            use_cache=True,
+        )['sequences']
 
         # Findings and impression sections (exclude previous impression section):
-        _, findings, impression = self.split_and_decode_sections(
+        _, findings, impression = self.encoder_decoder.split_and_decode_sections(
             output_ids,
             [self.tokenizer.bos_token_id, self.tokenizer.sep_token_id, self.tokenizer.eos_token_id],
+            self.tokenizer,
         )
 
         # Log reports:
@@ -280,25 +332,43 @@ class GTPrompt(VariableCXR):
         """
 
         # Tokenize prompt:
-        prompt = self.tokenize_prompt(
-            batch['previous_findings'], batch['previous_impression'], add_bos_token_id=True,
+        prompt = self.encoder_decoder.tokenize_prompt(
+            batch['previous_findings'], 
+            batch['previous_impression'], 
+            self.tokenizer, 
+            self.decoder_max_len, 
+            add_bos_token_id=True,
         )
 
         # Beam search:
-        output_ids = self.generate(
-            num_beams=self.num_test_beams, 
-            dicom_study_ids=batch['dicom_study_ids'], 
-            prompt_ids=prompt['input_ids'],
-            images=batch['images'],
-        )
+        output_ids = self.encoder_decoder.generate(
+            pixel_values=batch['images'],
+            decoder_input_ids=prompt['input_ids'],
+            special_token_ids=[
+                self.tokenizer.additional_special_tokens_ids[
+                    self.tokenizer.additional_special_tokens.index('[PMT-SEP]')
+                ],
+                self.tokenizer.bos_token_id,
+                self.tokenizer.sep_token_id,
+            ],            
+            max_length=self.decoder_max_len + prompt['input_ids'].shape[1],
+            bos_token_id=self.tokenizer.bos_token_id,
+            eos_token_id=self.tokenizer.eos_token_id,
+            pad_token_id=self.tokenizer.pad_token_id,
+            mask_token_id=self.tokenizer.pad_token_id,
+            num_beams=self.num_test_beams,
+            return_dict_in_generate=True,
+            use_cache=True,
+        )['sequences']
 
         # Log report token identifier:
         self.test_report_ids_logger.update(output_ids, study_ids=batch['study_ids'])
 
         # Findings and impression sections (exclude previous impression section):
-        _, findings, impression = self.split_and_decode_sections(
+        _, findings, impression = self.encoder_decoder.split_and_decode_sections(
             output_ids,
             [self.tokenizer.bos_token_id, self.tokenizer.sep_token_id, self.tokenizer.eos_token_id],
+            self.tokenizer
         )
 
         # Log reports:
@@ -323,90 +393,4 @@ class GTPrompt(VariableCXR):
             else:
                 raise ValueError(f'{i} must contain findings, impression, or report')
 
-    def tokenize_prompt(self, previous_findings: str, previous_impression: str, add_bos_token_id: bool = False):
-        """
-        Tokenize the sections of the previous report to be used as a prompt.
 
-        Argument/s:
-            previous_findings - previous findings section.
-            previous_impression - previous impression section.
-            add_bos_token_id - whether to add the BOS token identifier to the prompt.
-
-        Returns:
-            input_ids - the input identifiers for the previous impression.
-            attention_mask - the attention mask for the previous impression
-        """
-
-        # Use [NPF]/[NPI] special token if no previous findings/impression:
-        previous_findings = ['[NPF]' if not i else i for i in previous_findings]
-        previous_impression = ['[NPI]' if not i else i for i in previous_impression]
-
-        # Prepare the sections for the tokenizer by placing special tokens:
-        previous_sections = [
-            f'[PMT]{i}[PMT-SEP]{j}{self.tokenizer.bos_token}' if add_bos_token_id else f'[PMT]{i}[PMT-SEP]{j}' \
-                for i, j in zip(previous_findings, previous_impression)
-        ]
-
-        # Tokenize:
-        previous_sections = self.tokenizer(
-            previous_sections,
-            padding='longest',
-            truncation=True,
-            max_length=self.decoder_max_len,
-            return_tensors='pt',
-            return_token_type_ids=False,
-            add_special_tokens=False,
-        ).to(self.device)
-
-        # Ensure BOS token identifier is at the end of the input_ids:
-        if previous_sections.input_ids.shape[1] == self.decoder_max_len:
-            previous_sections.input_ids[:, -1] = torch.where(
-                previous_sections.attention_mask[:, -1] == 1,
-                self.tokenizer.bos_token_id,
-                previous_sections.input_ids[:, -1],
-            ) 
-
-        assert previous_sections.input_ids.shape[1] <= self.decoder_max_len
-
-        return {'input_ids': previous_sections.input_ids, 'attention_mask': previous_sections.attention_mask}
-
-    @staticmethod
-    def prepare_inputs_for_generation(
-        self,
-        input_ids,
-        special_token_ids,
-        mask_token_id,
-        past_key_values=None,
-        attention_mask=None,
-        use_cache=None,
-        encoder_outputs=None,
-        **kwargs,
-    ):
-        """
-        Modification of: 
-            https://github.com/huggingface/transformers/blob/main/src/transformers/models/encoder_decoder/modeling_encoder_decoder.py#L660
-        """
-
-        decoder_inputs = self.decoder.prepare_inputs_for_generation(input_ids, past_key_values=past_key_values)
-        decoder_attention_mask = (input_ids != mask_token_id).int()
-        decoder_position_ids = torch.nn.functional.relu(
-            torch.cumsum(decoder_attention_mask, dim=1, dtype=torch.int64) - 1
-        )
-
-        if not past_key_values:
-            token_type_ids = SingleCXR.token_ids_to_token_type_ids(input_ids, special_token_ids)
-        else:
-            token_type_ids = SingleCXR.token_ids_to_token_type_ids_past(input_ids, special_token_ids)
-            decoder_position_ids = decoder_position_ids[:, -1:]
-
-        input_dict = {
-            'attention_mask': attention_mask,
-            'decoder_attention_mask': decoder_attention_mask,
-            'decoder_input_ids': decoder_inputs['input_ids'],
-            'decoder_token_type_ids': token_type_ids,
-            'decoder_position_ids': decoder_position_ids,
-            'encoder_outputs': encoder_outputs,
-            'past_key_values': decoder_inputs['past_key_values'],
-            'use_cache': use_cache,
-        }
-        return input_dict
