@@ -74,8 +74,8 @@ def stages(args: Namespace):
         elif hasattr(args, 'warm_start_name'):
             if args.warm_start_name:
                 model = TaskModel(**vars(args))
-                model.encoder_decoder = transformers.AutoModel.from_pretrained(args.warm_start_name, trust_remote_code=True)
-
+                hf_ckpt = transformers.AutoModel.from_pretrained(args.warm_start_name, trust_remote_code=True)
+                model.encoder_decoder.load_state_dict(hf_ckpt.state_dict())
         else:
             args.warm_start_modules = True
             model = TaskModel(**vars(args))
@@ -89,7 +89,8 @@ def stages(args: Namespace):
         if hasattr(args, 'test_ckpt_name'):
             assert 'model' not in locals(), 'if "test_ckpt_name" is defined in the config, it will overwrite the model checkpoint that has been trained.'
             model = TaskModel(**vars(args))
-            model.encoder_decoder = transformers.AutoModel.from_pretrained(args.test_ckpt_name, trust_remote_code=True)
+            hf_ckpt = transformers.AutoModel.from_pretrained(args.test_ckpt_name, trust_remote_code=True)
+            model.encoder_decoder.load_state_dict(hf_ckpt.state_dict())
         elif args.fast_dev_run:
             if 'model' not in locals():
                 model = TaskModel(**vars(args))

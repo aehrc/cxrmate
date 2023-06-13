@@ -29,7 +29,7 @@ class GTPrompt(VariableCXR):
         Initialise torch.nn.Modules.
         """
 
-        encoder_decoder_ckpt_name = 'aehrc/mimic-cxr-report-gen-single'
+        encoder_decoder_ckpt_name = 'aehrc/cxrmate-tf'
 
         # Decoder tokenizer:
         self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(encoder_decoder_ckpt_name, cache_dir=self.ckpt_zoo_dir)

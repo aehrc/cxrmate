@@ -169,7 +169,7 @@ class SingleCXR(LightningModule):
         """
 
         # Encoder-to-decoder checkpoint name:
-        encoder_decoder_ckpt_name = 'aehrc/mimic-cxr-report-gen-single'
+        encoder_decoder_ckpt_name = 'aehrc/cxrmate-single-tf'
 
         # Decoder tokenizer:
         self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(

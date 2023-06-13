@@ -22,7 +22,7 @@ class CvtWithProjectionHeadConfig(transformers.CvtConfig):
 
 
 class ModelOutputWithProjectionEmbedding(transformers.modeling_outputs.ModelOutput):
-    projected_last_hidden_state: torch.FloatTensor
+    last_hidden_state: torch.FloatTensor
 
 
 class CvtProjectionHead(torch.nn.Module):
@@ -76,7 +76,7 @@ class CvtWithProjectionHead(transformers.CvtPreTrainedModel):
             return projection
 
         return ModelOutputWithProjectionEmbedding(
-            projected_last_hidden_state=projection,
+            last_hidden_state=projection,
         )
     
 
@@ -210,7 +210,7 @@ class SingleCXREncoderDecoderModel(VisionEncoderDecoderModel):
             decoder_hidden_states=decoder_outputs.hidden_states,
             decoder_attentions=decoder_outputs.attentions,
             cross_attentions=decoder_outputs.cross_attentions,
-            encoder_last_hidden_state=encoder_outputs.projected_last_hidden_state,
+            encoder_last_hidden_state=encoder_outputs.last_hidden_state,
             # encoder_hidden_states=encoder_outputs.hidden_states,
             # encoder_attentions=encoder_outputs.attentions,
         )

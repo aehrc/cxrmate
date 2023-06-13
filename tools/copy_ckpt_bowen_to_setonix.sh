@@ -1,0 +1,2 @@
+scp /datasets/work/hb-mlaifsp-mm/work/repositories/transmodal/multimodal_23/task/mimic_cxr/results/miccai_2023_any_lora.ipynb \
+    anicolson@data-mover.pawsey.org.au:/software/projects/pawsey0864/anicolson/repositories/cxrmate/

@@ -1,5 +1,5 @@
 defaults:
-  - train_single
+  - single_tf
   - _self_
 
 module: modules.lightning_modules.variable
