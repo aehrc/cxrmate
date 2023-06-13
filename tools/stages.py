@@ -70,6 +70,12 @@ def stages(args: Namespace):
                 model = TaskModel.load_from_checkpoint(checkpoint_path=ckpt_path, **vars(args))
                 print('Warm-starting using: {}.'.format(ckpt_path))
 
+        # Warm-start from Hugging Face checkpoint:
+        elif hasattr(args, 'warm_start_name'):
+            if args.warm_start_name:
+                model = TaskModel(**vars(args))
+                model.encoder_decoder = transformers.AutoModel.from_pretrained(args.warm_start_name, trust_remote_code=True)
+
         else:
             args.warm_start_modules = True
             model = TaskModel(**vars(args))
@@ -83,7 +89,7 @@ def stages(args: Namespace):
         if hasattr(args, 'test_ckpt_name'):
             assert 'model' not in locals(), 'if "test_ckpt_name" is defined in the config, it will overwrite the model checkpoint that has been trained.'
             model = TaskModel(**vars(args))
-            model.encoder_decoder = transformers.AutoModel.from_pretrained(args.test_ckpt_name, trust_remote_code=True, cache_dir=args.ckpt_zoo_dir)
+            model.encoder_decoder = transformers.AutoModel.from_pretrained(args.test_ckpt_name, trust_remote_code=True)
         elif args.fast_dev_run:
             if 'model' not in locals():
                 model = TaskModel(**vars(args))

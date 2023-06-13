@@ -7,7 +7,9 @@ definition: GTPrompt
 
 mbatch_size: 2
 
-variable_ckpt_name: 'aehrc/mimic-cxr-report-gen-single'
+variable_ckpt_name: None
+
+warm_start_name: 'aehrc/cxrmate-tf'
 
 
 
@@ -16,13 +18,13 @@ variable_ckpt_name: 'aehrc/mimic-cxr-report-gen-single'
 
 
 
-defaults:
-  - 082_any_single
-  # - ancillary/1gpu@_global_
-  - ancillary/4gpu@_global_
-  - _self_
+# defaults:
+#   - 082_any_single
+#   # - ancillary/1gpu@_global_
+#   - ancillary/4gpu@_global_
+#   - _self_
 
-time_limit: '96:00:00'
+# time_limit: '96:00:00'
 
 module: task.mimic_cxr.model.report_gen.any.scst.gt_prompt
 definition: GTPromptCXRBERT

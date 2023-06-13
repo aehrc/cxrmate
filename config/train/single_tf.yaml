@@ -4,7 +4,6 @@ defaults:
   - //home/anicolson/config/1gpu.yaml@_global_
   - //home/anicolson/config/paths.yaml@_global_
   - _self_
-
 venv_path: /software/projects/pawsey0864/anicolson/environments/multimodal_23/bin/activate
 
 

@@ -5,9 +5,8 @@ import transformers
 from torch.utils.data import DataLoader
 
 from task.mimic_cxr.datasets.prompt import PreviousReportSubset
-from task.mimic_cxr.model.report_gen.any.test_gen_prompt import GeneratedPrompt
+from task.mimic_cxr.model.report_gen.any.prompt_variable_lora import GeneratedPrompt
 from task.mimic_cxr.tools.rewards.cxrbert import CXRBERTReward
-from task.mimic_cxr.tools.rewards.rewards import RadGraphReward
 
 
 class SCSTGeneratedPrompt(GeneratedPrompt):
@@ -37,6 +36,18 @@ class SCSTGeneratedPrompt(GeneratedPrompt):
         self.scst_sample_temperature = scst_sample_temperature
 
         assert self.mbatch_size == 1
+
+        # Freeze the encoder:
+        for p in self.encoder.parameters():
+            p.requires_grad = False
+        for p in self.encoder_projection.parameters():
+            p.requires_grad = False
+        for p in self.last_hidden_state_layer_norm.parameters():
+            p.requires_grad = False
+
+        # Unfreeze all parameters of the decoder (even LoRA):
+        for p in self.encoder_decoder.decoder.parameters():
+            p.requires_grad = True
 
     def setup(self, stage=None):
         """
@@ -188,7 +199,7 @@ class SCSTGeneratedPrompt(GeneratedPrompt):
         logits, sampled_token_ids, sample_str = self.sample(prompt['input_ids'], encoder_outputs, attention_mask)
 
         # Sample reward:
-        labels = [[f'{i[0]} {j[0]}'] for i, j in zip(batch['findings'], batch['impression'])]
+        labels = [[f'{i} {j}'] for i, j in zip(batch['findings'], batch['impression'])]
         reward = self.reward(sample_str, labels).to(self.device)  # batch contains the labels.
 
         # Baseline token identifiers:
@@ -342,24 +353,10 @@ class SCSTGeneratedPrompt(GeneratedPrompt):
         return loss
 
 
-class CXRBERT(SCSTGeneratedPrompt):
+class GeneratedPromptCXRBERT(SCSTGeneratedPrompt):
 
     def on_fit_start(self):
         """
         https://pytorch-lightning.readthedocs.io/en/stable/common/lightning_module.html#on-fit-start.
         """
         self.reward = CXRBERTReward(ckpt_dir=self.ckpt_zoo_dir, device=self.device)
-    
-
-class RGER(SCSTGeneratedPrompt):
-
-    def on_fit_start(self):
-        """
-        https://pytorch-lightning.readthedocs.io/en/stable/common/lightning_module.html#on-fit-start.
-        """
-        self.reward = RadGraphReward(
-            radgraph_reward='rg_er',
-            module_load_apptainer=self.module_load_apptainer,
-            image_dir=self.image_dir,
-            device=self.device,
-        )
