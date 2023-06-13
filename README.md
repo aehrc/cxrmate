@@ -20,7 +20,7 @@ python -m pip install --upgrade pip
 python -m pip install --upgrade -r requirements.txt --no-cache-dir
 ```
 
-# Hugging Face models and examples:
+# Hugging Face models:
 
  - **Longitudinal, variable-CXR report generation** with SCST & CXR-BERT reward and generated previous reports: https://huggingface.co/aehrc/cxrmate
  - **Longitudinal, variable-CXR report generation** with SCST & CXR-BERT reward and ground truth previous reports: https://huggingface.co/aehrc/cxrmate-gt
@@ -30,7 +30,11 @@ python -m pip install --upgrade -r requirements.txt --no-cache-dir
 
 ***SCST: Self-Critical Sequence Training, TF: Teacher Forcing***
 
-## MIMIC-CXR Dataset:   
+# Notebook examples:
+
+Notebook examples for the models can be found in the `examples` directory.
+
+## Download MIMIC-CXR Dataset:   
 
  - The MIMIC-CXR-JPG dataset is available at: 
         ```
@@ -55,6 +59,12 @@ To train with teacher forcing:
  
 ```
 dlhpcstarter -t cxrmate -c config/train_longitudinal_gt_prompt.yaml --stages_module tools.stages --train
+```
+
+The model can then be tested with the `--test` flag:
+
+```
+dlhpcstarter -t cxrmate -c config/train_longitudinal_gt_prompt.yaml --stages_module tools.stages --test
 ```
 
 To then train with Self-Critical Sequence Training (SCST) with the CXR-BERT reward:
