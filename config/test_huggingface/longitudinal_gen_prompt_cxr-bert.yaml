@@ -1,5 +1,16 @@
 defaults:
-  - train_longitudinal_cxr-bert
+  - single_tf
   - _self_
 
 test_ckpt_name: 'aehrc/cxrmate'
+
+module: modules.lightning_modules.longitudinal.scst.gen_prompt
+definition: GeneratedPromptCXRBERT
+
+mbatch_size: 1
+
+variable_ckpt_name: None
+
+lr: 5e-6
+
+max_epochs: 1

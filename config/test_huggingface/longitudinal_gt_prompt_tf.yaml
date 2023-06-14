@@ -1,5 +1,12 @@
 defaults:
-  - train_longitudinal
+  - single_tf
   - _self_
 
 test_ckpt_name: 'aehrc/cxrmate-tf'
+
+module: modules.lightning_modules.longitudinal.gt_prompt
+definition: GTPrompt
+
+mbatch_size: 2
+
+variable_ckpt_name: None

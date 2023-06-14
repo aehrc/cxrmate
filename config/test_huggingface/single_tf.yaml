@@ -1,5 +1,35 @@
 defaults:
-  - train_single
+  # - //home/nic261/config/1gpu.yaml@_global_
+  # - //home/nic261/config/paths.yaml@_global_
+  - //home/anicolson/config/1gpu.yaml@_global_
+  - //home/anicolson/config/paths.yaml@_global_
   - _self_
+venv_path: /software/projects/pawsey0864/anicolson/environments/multimodal_23/bin/activate
+
+# exp_dir: experiments
+# dataset_dir: datasets
+# ckpt_zoo_dir: checkpoints
 
 test_ckpt_name: 'aehrc/cxrmate-single-tf'
+
+module: modules.lightning_modules.single
+definition: SingleCXR
+
+strategy: 'ddp'
+devices: 1
+
+sections_to_evaluate: ['report']
+max_images_per_study: 5
+lr: 5e-5
+max_epochs: 32
+mbatch_size: 8
+accumulated_mbatch_size: 32
+every_n_epochs: 1
+monitor: 'val_report_chexbert_f1_macro'
+monitor_mode: 'max'
+precision: 16
+deterministic: False
+decoder_max_len: 256
+num_test_beams: 4
+enable_progress_bar: True
+weights_summary: 'full'

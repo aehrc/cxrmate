@@ -1,10 +1,12 @@
 defaults:
-  - train_longitudinal_gt_prompt
+  - single_tf
   - _self_
+
+test_ckpt_name: 'aehrc/cxrmate-tf'
 
 module: modules.lightning_modules.longitudinal.gen_prompt
 definition: GeneratedPrompt
 
-test_ckpt_name: 'aehrc/cxrmate-tf'
-
 mbatch_size: 1
+
+variable_ckpt_name: None
