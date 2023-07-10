@@ -1,5 +1,11 @@
 # CXRMate: Leveraging Longitudinal Data and a Semantic Similarity Reward for Chest X-Ray Report Generation
 
+```
+Reference coming soon...
+```
+
+
+
 CXRMate is a longitudinal, variable CXR report generation encoder-to-decoder model that conditions the report generation process on the report from the previous patient's study if available. The CXRMate checkpoint trained on MIMIC-CXR is available on the Hugging Face Hub: https://huggingface.co/aehrc/cxrmate.
 
 <!-- ADD CITATION HERE -->
