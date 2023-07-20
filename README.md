@@ -1,7 +1,15 @@
 # CXRMate: Leveraging Longitudinal Data and a Semantic Similarity Reward for Chest X-Ray Report Generation
 
+Paper (arXiv): https://arxiv.org/abs/2307.09758
 ```
-Reference coming soon...
+@misc{nicolson2023longitudinal,
+      title={Longitudinal Data and a Semantic Similarity Reward for Chest X-Ray Report Generation}, 
+      author={Aaron Nicolson and Jason Dowling and Bevan Koopman},
+      year={2023},
+      eprint={2307.09758},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
 ```
 
 
