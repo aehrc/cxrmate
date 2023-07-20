@@ -16,7 +16,7 @@ CXRMate is a longitudinal, variable CXR report generation encoder-to-decoder mod
 
 <!-- ADD CITATION HERE -->
 
-|![](docs/tokens.drawio.png)|
+|![](docs/tokens.png)|
 |----|
 | <p align="center"> <a>CXRMate: longitudinal, variable-CXR report generation. The decoder is prompted by the report of the previous study. [PMT], [PMT-SEP] [BOS],  [SEP], and [EOS] denote the *prompt*, *prompt separator*,  *beginning-of-sentence*, *separator*, and *end-of-sentence* special tokens, respectively.</a> </p> |
 
