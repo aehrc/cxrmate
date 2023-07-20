@@ -12,15 +12,13 @@ Paper (arXiv): https://arxiv.org/abs/2307.09758
 }
 ```
 
-
-
 CXRMate is a longitudinal, variable CXR report generation encoder-to-decoder model that conditions the report generation process on the report from the previous patient's study if available. The CXRMate checkpoint trained on MIMIC-CXR is available on the Hugging Face Hub: https://huggingface.co/aehrc/cxrmate.
 
 <!-- ADD CITATION HERE -->
 
 |![](docs/tokens.drawio.png)|
 |----|
-| <p align="center"> <a>CXRMate: longitudinal, variable-CXR report generation. The decoder is prompted by the impression section of the previous study. [PMT], [BOS],  [SEP], and [EOS] denote the *prompt*, *beginning-of-sentence*, *separator*, and *end-of-sentence* special tokens, respectively.</a> </p> |
+| <p align="center"> <a>CXRMate: longitudinal, variable-CXR report generation. The decoder is prompted by the report of the previous study. [PMT], [PMT-SEP] [BOS],  [SEP], and [EOS] denote the *prompt*, *prompt separator*,  *beginning-of-sentence*, *separator*, and *end-of-sentence* special tokens, respectively.</a> </p> |
 
 # Generated reports:
 <!-- Generated reports for the single-CXR, variable-CXR, and longitudinal, variable-CXR (both prompted with the ground truth and the generated reports) are located in the [`generated_reports`](https://github.com/aehrc/cxrmate/blob/main/generated_reports) directory. -->
