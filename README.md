@@ -1,5 +1,6 @@
 # CXRMate: Leveraging Longitudinal Data and a Semantic Similarity Reward for Chest X-Ray Report Generation
 
+<!---
 Paper (arXiv): https://arxiv.org/abs/2307.09758
 ```
 @misc{nicolson2023longitudinal,
@@ -11,6 +12,7 @@ Paper (arXiv): https://arxiv.org/abs/2307.09758
       primaryClass={cs.CV}
 }
 ```
+--> 
 
 CXRMate is a longitudinal, variable CXR report generation encoder-to-decoder model that conditions the report generation process on the report from the previous patient's study if available. The CXRMate checkpoint trained on MIMIC-CXR is available on the Hugging Face Hub: https://huggingface.co/aehrc/cxrmate.
 
@@ -26,13 +28,19 @@ Generated reports for the single-CXR, variable-CXR, and longitudinal, variable-C
 
 # Hugging Face models:
 
+**Will be made available after double-blind review**
+
+<!---
  - **Longitudinal, variable-CXR report generation** with SCST & CXR-BERT reward and generated previous reports: https://huggingface.co/aehrc/cxrmate
  - **Longitudinal, variable-CXR report generation** with SCST & CXR-BERT reward and ground truth previous reports: https://huggingface.co/aehrc/cxrmate-gt
  - **Longitudinal, variable-CXR report generation** with TF: https://huggingface.co/aehrc/cxrmate-tf
  - **Variable-CXR report generation** with TF: https://huggingface.co/aehrc/cxrmate-variable-tf
  - **Single-CXR report generation** with TF: https://huggingface.co/aehrc/cxrmate-single-tf
 
-***SCST: Self-Critical Sequence Training, TF: Teacher Forcing***
+ ***SCST: Self-Critical Sequence Training, TF: Teacher Forcing***
+
+--> 
+
 
 # Notebook examples:
 
