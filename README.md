@@ -14,7 +14,7 @@ Paper (arXiv): https://arxiv.org/abs/2307.09758
 ```
 --> 
 
-CXRMate is a longitudinal, variable CXR report generation encoder-to-decoder model that conditions the report generation process on the report from the previous patient's study if available. The CXRMate checkpoint trained on MIMIC-CXR is available on the Hugging Face Hub: https://huggingface.co/aehrc/cxrmate.
+CXRMate is a longitudinal, variable CXR report generation encoder-to-decoder model that conditions the report generation process on the report from the previous patient's study if available. The CXRMate checkpoint trained on MIMIC-CXR is available on the Hugging Face Hub: <!-- https://huggingface.co/aehrc/cxrmate --> *This will be available after double-blind review*.
 
 <!-- ADD CITATION HERE -->
 
@@ -28,7 +28,7 @@ Generated reports for the single-CXR, variable-CXR, and longitudinal, variable-C
 
 # Hugging Face models:
 
-**Will be made available after double-blind review**
+*These will be made available after double-blind review*
 
 <!---
  - **Longitudinal, variable-CXR report generation** with SCST & CXR-BERT reward and generated previous reports: https://huggingface.co/aehrc/cxrmate
