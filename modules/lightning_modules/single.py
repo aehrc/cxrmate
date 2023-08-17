@@ -23,7 +23,7 @@ from modules.transformers.single_model.modelling_single import (
 
 class SingleCXR(LightningModule):
     """
-    Single-CXR model.
+    Single-image CXR report generation model.
     """
     def __init__(
             self,

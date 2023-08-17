@@ -1,0 +1,8 @@
+defaults:
+  - single_tf
+  - _self_
+
+module: modules.lightning_modules.multi
+definition: MultiCXR
+
+mbatch_size: 4

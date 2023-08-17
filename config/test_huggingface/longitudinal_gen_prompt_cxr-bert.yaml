@@ -9,7 +9,7 @@ definition: GeneratedPromptCXRBERT
 
 mbatch_size: 1
 
-variable_ckpt_name: None
+multi_ckpt_name: None
 
 lr: 5e-6
 

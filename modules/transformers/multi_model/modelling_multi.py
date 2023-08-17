@@ -44,7 +44,7 @@ class CvtProjectionHead(torch.nn.Module):
         return x
 
 
-class VariableCvtWithProjectionHead(transformers.CvtPreTrainedModel):
+class MultiCvtWithProjectionHead(transformers.CvtPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
 
@@ -90,7 +90,7 @@ class VariableCvtWithProjectionHead(transformers.CvtPreTrainedModel):
         )
     
 
-class VariableCXREncoderDecoderModel(VisionEncoderDecoderModel):
+class MultiCXREncoderDecoderModel(VisionEncoderDecoderModel):
 
     config_class = VisionEncoderDecoderConfig
     base_model_prefix = "vision_encoder_decoder"
@@ -123,7 +123,7 @@ class VariableCXREncoderDecoderModel(VisionEncoderDecoderModel):
 
         # Encoder:
         if encoder is None:
-            encoder = VariableCvtWithProjectionHead(config=config.encoder)
+            encoder = MultiCvtWithProjectionHead(config=config.encoder)
 
         # Decoder:
         if decoder is None:

@@ -11,7 +11,7 @@ class StudyIDSubset(DICOMIDSubset):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-        # For variable-CXR, the study identifiers make up the training examples:
+        # For multi-image, the study identifiers make up the training examples:
         self.examples = self.df['study_id'].drop_duplicates().tolist()
 
         # Column:

@@ -11,14 +11,14 @@ from transformers.modeling_outputs import BaseModelOutput
 
 from data.study_id import StudyIDSubset
 from modules.lightning_modules.single import SingleCXR
-from modules.transformers.variable_model.modelling_variable import (
-    CvtWithProjectionHeadConfig, VariableCvtWithProjectionHead,
-    VariableCXREncoderDecoderModel)
+from modules.transformers.multi_model.modelling_multi import (
+    CvtWithProjectionHeadConfig, MultiCvtWithProjectionHead,
+    MultiCXREncoderDecoderModel)
 
 
-class VariableCXR(SingleCXR):
+class MultiCXR(SingleCXR):
     """
-    Variable-CXR model.
+    Multi-image CXR report generation model.
     """
     def __init__(self, **kwargs):
         kwargs['accumulate_over_dicoms'] = False
@@ -29,7 +29,7 @@ class VariableCXR(SingleCXR):
         Initialise torch.nn.Modules.
         """
 
-        encoder_decoder_ckpt_name = 'aehrc/cxrmate-variable-tf'
+        encoder_decoder_ckpt_name = 'aehrc/cxrmate-multi-tf'
 
         # Decoder tokenizer:
         self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(encoder_decoder_ckpt_name, cache_dir=self.ckpt_zoo_dir)
@@ -61,16 +61,16 @@ class VariableCXR(SingleCXR):
 
         # Encoder-to-decoder model:
         if self.warm_start_modules:
-            encoder = VariableCvtWithProjectionHead.from_pretrained(
+            encoder = MultiCvtWithProjectionHead.from_pretrained(
                 os.path.join(self.ckpt_zoo_dir, encoder_ckpt_name),
                 local_files_only=True,
                 config=config_encoder,
             )
             decoder = transformers.BertLMHeadModel(config=config_decoder)
-            self.encoder_decoder = VariableCXREncoderDecoderModel(encoder=encoder, decoder=decoder)
+            self.encoder_decoder = MultiCXREncoderDecoderModel(encoder=encoder, decoder=decoder)
         else:
             config = transformers.VisionEncoderDecoderConfig.from_encoder_decoder_configs(config_encoder, config_decoder)
-            self.encoder_decoder = VariableCXREncoderDecoderModel(config=config)
+            self.encoder_decoder = MultiCXREncoderDecoderModel(config=config)
 
         # This is to get the pre-processing parameters for the checkpoint, this is not actually used for pre-processing:
         self.encoder_feature_extractor = transformers.AutoFeatureExtractor.from_pretrained(

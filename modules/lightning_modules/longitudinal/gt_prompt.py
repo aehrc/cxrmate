@@ -9,18 +9,18 @@ from torchvision import transforms
 from transformers.modeling_outputs import BaseModelOutput
 
 from data.prompt import PreviousReportSubset
-from modules.lightning_modules.variable import VariableCXR
+from modules.lightning_modules.multi import MultiCXR
 from modules.transformers.longitudinal_model.modelling_longitudinal import (
-    VariableCvtWithProjectionHead, CvtWithProjectionHeadConfig,
-    LongitudinalPromptVariableCXREncoderDecoderModel)
+    CvtWithProjectionHeadConfig,
+    LongitudinalPromptMultiCXREncoderDecoderModel)
 
 
-class GTPrompt(VariableCXR):
+class GTPrompt(MultiCXR):
     """
     Prompt the decoder with the findings and impression section of the previous study.
     """
-    def __init__(self, variable_ckpt_name, lora_rank=8, **kwargs):
-        self.variable_ckpt_name = variable_ckpt_name
+    def __init__(self, multi_ckpt_name, lora_rank=8, **kwargs):
+        self.multi_ckpt_name = multi_ckpt_name
         self.lora_rank = lora_rank
         super().__init__(**kwargs)
 
@@ -62,11 +62,11 @@ class GTPrompt(VariableCXR):
 
         # Encoder-to-decoder model:
         if self.warm_start_modules:
-            self.encoder_decoder = LongitudinalPromptVariableCXREncoderDecoderModel(
-                config=config, encoder_decoder_ckpt_name=self.variable_ckpt_name,
+            self.encoder_decoder = LongitudinalPromptMultiCXREncoderDecoderModel(
+                config=config, encoder_decoder_ckpt_name=self.multi_ckpt_name,
             )
         else:
-            self.encoder_decoder = LongitudinalPromptVariableCXREncoderDecoderModel(config=config)
+            self.encoder_decoder = LongitudinalPromptMultiCXREncoderDecoderModel(config=config)
 
         # This is to get the pre-processing parameters for the checkpoint, this is not actually used for pre-processing:
         self.encoder_feature_extractor = transformers.AutoFeatureExtractor.from_pretrained(
@@ -293,6 +293,12 @@ class GTPrompt(VariableCXR):
             use_cache=True,
         )['sequences']
 
+        # An update to generate() now prepends bos_token_id to each sequence if it does not exist at the start of the input: 
+        #   https://github.com/huggingface/transformers/blob/d533465150532b0c5de167b574e59f64c68b1154/src/transformers/generation/utils.py#L699C13-L699C30
+        # Hence, we remove the prepended bos_token_id from each sequence if it is there:
+        if torch.all(output_ids[:, 0] == 1):
+            output_ids = output_ids[:, 1:]
+
         # Findings and impression sections (exclude previous impression section):
         _, findings, impression = self.encoder_decoder.split_and_decode_sections(
             output_ids,
@@ -360,6 +366,12 @@ class GTPrompt(VariableCXR):
             return_dict_in_generate=True,
             use_cache=True,
         )['sequences']
+
+        # An update to generate() now prepends bos_token_id to each sequence if it does not exist at the start of the input: 
+        #   https://github.com/huggingface/transformers/blob/d533465150532b0c5de167b574e59f64c68b1154/src/transformers/generation/utils.py#L699C13-L699C30
+        # Hence, we remove the prepended bos_token_id from each sequence if it is there:
+        if torch.all(output_ids[:, 0] == 1):
+            output_ids = output_ids[:, 1:]
 
         # Log report token identifier:
         self.test_report_ids_logger.update(output_ids, study_ids=batch['study_ids'])

@@ -14,28 +14,28 @@ Paper (arXiv): https://arxiv.org/abs/2307.09758
 ```
 --> 
 
-CXRMate is a longitudinal, variable CXR report generation encoder-to-decoder model that conditions the report generation process on the report from the previous patient's study if available. The CXRMate checkpoint trained on MIMIC-CXR is available on the Hugging Face Hub: <!-- https://huggingface.co/aehrc/cxrmate --> *This will be available after double-blind review*.
+CXRMate is a longitudinal, multi-image CXR report generation encoder-to-decoder model that conditions the report generation process on the report from the previous patient's study if available. The CXRMate checkpoint trained on MIMIC-CXR is available on the Hugging Face Hub: <!-- https://huggingface.co/aehrc/cxrmate --> *This will be available after double-blind review*.
 
 <!-- ADD CITATION HERE -->
 
 |![](docs/tokens.png)|
 |----|
-| <p align="center"> <a>CXRMate: longitudinal, variable-CXR report generation. The decoder is prompted by the report of the previous study. [PMT], [PMT-SEP] [BOS],  [SEP], and [EOS] denote the *prompt*, *prompt separator*,  *beginning-of-sentence*, *separator*, and *end-of-sentence* special tokens, respectively.</a> </p> |
+| <p align="center"> <a>CXRMate: longitudinal, multi-image CXR report generation. The decoder is prompted by the report of the previous study. [PMT], [PMT-SEP] [BOS],  [SEP], and [EOS] denote the *prompt*, *prompt separator*,  *beginning-of-sentence*, *separator*, and *end-of-sentence* special tokens, respectively.</a> </p> |
 
 # Generated reports:
-<!-- Generated reports for the single-CXR, variable-CXR, and longitudinal, variable-CXR (both prompted with the ground truth and the generated reports) are located in the [`generated_reports`](https://github.com/aehrc/cxrmate/blob/main/generated_reports) directory. -->
-Generated reports for the single-CXR, variable-CXR, and longitudinal, variable-CXR (both prompted with the ground truth and the generated reports) are located in the [`generated_reports`](https://anonymous.4open.science/r/cxrmate-D1D3/generated_reports) directory.
+<!-- Generated reports for the single-image, multi-image, and longitudinal, multi-image (both prompted with the radiologist and the generated reports) are located in the [`generated_reports`](https://github.com/aehrc/cxrmate/blob/main/generated_reports) directory. -->
+Generated reports for the single-image, multi-image, and longitudinal, multi-image CXR generators (both prompted with the radiologist and the generated reports) are located in the [`generated_reports`](https://anonymous.4open.science/r/cxrmate-D1D3/generated_reports) directory.
 
 # Hugging Face models:
 
 *These will be made available after double-blind review*
 
 <!---
- - **Longitudinal, variable-CXR report generation** with SCST & CXR-BERT reward and generated previous reports: https://huggingface.co/aehrc/cxrmate
- - **Longitudinal, variable-CXR report generation** with SCST & CXR-BERT reward and ground truth previous reports: https://huggingface.co/aehrc/cxrmate-gt
- - **Longitudinal, variable-CXR report generation** with TF: https://huggingface.co/aehrc/cxrmate-tf
- - **Variable-CXR report generation** with TF: https://huggingface.co/aehrc/cxrmate-variable-tf
- - **Single-CXR report generation** with TF: https://huggingface.co/aehrc/cxrmate-single-tf
+ - **Longitudinal, multi-image CXR report generation** with SCST & CXR-BERT reward and generated previous reports: https://huggingface.co/aehrc/cxrmate
+ - **Longitudinal, multi-image CXR report generation** with SCST & CXR-BERT reward and radiologist previous reports: https://huggingface.co/aehrc/cxrmate-gt
+ - **Longitudinal, multi-image CXR report generation** with TF: https://huggingface.co/aehrc/cxrmate-tf
+ - **Multi-image CXR report generation** with TF: https://huggingface.co/aehrc/cxrmate-multi-tf
+ - **Single-image CXR report generation** with TF: https://huggingface.co/aehrc/cxrmate-single-tf
 
  ***SCST: Self-Critical Sequence Training, TF: Teacher Forcing***
 
@@ -44,7 +44,14 @@ Generated reports for the single-CXR, variable-CXR, and longitudinal, variable-C
 
 # Notebook examples:
 
+*These will be made available after double-blind review*
+
+<!---
+
 Notebook examples for the models can be found in the [`examples`](https://anonymous.4open.science/r/cxrmate-D1D3/examples) directory.
+
+--> 
+
 
 # Dataset:
 

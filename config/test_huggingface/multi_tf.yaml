@@ -1,0 +1,10 @@
+defaults:
+  - single_tf
+  - _self_
+
+test_ckpt_name: 'aehrc/cxrmate-multi-tf'
+
+module: modules.lightning_modules.multi
+definition: MultiCXR
+
+mbatch_size: 4

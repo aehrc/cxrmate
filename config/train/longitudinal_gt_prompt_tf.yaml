@@ -7,4 +7,4 @@ definition: GTPrompt
 
 mbatch_size: 2
 
-variable_ckpt_name: 'aehrc/cxrmate-variable-tf'  # To warm-start the encoder-to-decoder model.
+multi_ckpt_name: 'aehrc/cxrmate-multi-tf'  # To warm-start the encoder-to-decoder model.

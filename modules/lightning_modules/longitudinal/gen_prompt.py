@@ -1,6 +1,5 @@
-
-
 import pandas as pd
+import torch
 from torch.utils.data import DataLoader
 
 from data.prompt import PreviousReportSubset
@@ -121,6 +120,12 @@ class GeneratedPrompt(GTPrompt):
             use_cache=True,
         )['sequences']
 
+        # An update to generate() now prepends bos_token_id to each sequence if it does not exist at the start of the input: 
+        #   https://github.com/huggingface/transformers/blob/d533465150532b0c5de167b574e59f64c68b1154/src/transformers/generation/utils.py#L699C13-L699C30
+        # Hence, we remove the prepended bos_token_id from each sequence if it is there:
+        if torch.all(output_ids[:, 0] == 1):
+            output_ids = output_ids[:, 1:]
+
         # Findings and impression sections (exclude previous impression section):
         _, findings, impression = self.encoder_decoder.split_and_decode_sections(
             output_ids,
@@ -193,6 +198,12 @@ class GeneratedPrompt(GTPrompt):
             return_dict_in_generate=True,
             use_cache=True,
         )['sequences']
+
+        # An update to generate() now prepends bos_token_id to each sequence if it does not exist at the start of the input: 
+        #   https://github.com/huggingface/transformers/blob/d533465150532b0c5de167b574e59f64c68b1154/src/transformers/generation/utils.py#L699C13-L699C30
+        # Hence, we remove the prepended bos_token_id from each sequence if it is there:
+        if torch.all(output_ids[:, 0] == 1):
+            output_ids = output_ids[:, 1:]
 
         # Log report token identifier:
         self.test_report_ids_logger.update(output_ids, study_ids=batch['study_ids'])

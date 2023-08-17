@@ -223,6 +223,11 @@ class SCSTGeneratedPrompt(GeneratedPrompt):
             use_cache=True,
         )['sequences']
 
+        # An update to generate() now prepends bos_token_id to each sequence if it does not exist at the start of the input: 
+        #   https://github.com/huggingface/transformers/blob/d533465150532b0c5de167b574e59f64c68b1154/src/transformers/generation/utils.py#L699C13-L699C30
+        # Hence, we remove the prepended bos_token_id from each sequence if it is there:
+        if torch.all(baseline_ids[:, 0] == 1):
+            baseline_ids = baseline_ids[:, 1:]
 
         # Findings and impression sections (exclude previous impression section):
         _, baseline_findings, baseline_impression = self.encoder_decoder.split_and_decode_sections(
@@ -303,6 +308,12 @@ class SCSTGeneratedPrompt(GeneratedPrompt):
             use_cache=True,
             output_scores=True,
         )
+
+        # An update to generate() now prepends bos_token_id to each sequence if it does not exist at the start of the input: 
+        #   https://github.com/huggingface/transformers/blob/d533465150532b0c5de167b574e59f64c68b1154/src/transformers/generation/utils.py#L699C13-L699C30
+        # Hence, we remove the prepended bos_token_id from each sequence if it is there:
+        if torch.all(sample['sequences'][:, 0] == 1):
+            sample['sequences'] = sample['sequences'][:, 1:]
 
         # Logits
         logits = torch.stack(sample['scores'], dim=-1)

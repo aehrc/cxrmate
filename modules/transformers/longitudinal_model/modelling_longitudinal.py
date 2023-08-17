@@ -47,7 +47,7 @@ class CvtProjectionHead(torch.nn.Module):
         return x
 
 
-class VariableCvtWithProjectionHead(transformers.CvtPreTrainedModel):
+class MultiCvtWithProjectionHead(transformers.CvtPreTrainedModel):
     def __init__(self, config):
         super().__init__(config)
 
@@ -93,7 +93,7 @@ class VariableCvtWithProjectionHead(transformers.CvtPreTrainedModel):
         )
     
 
-class LongitudinalPromptVariableCXREncoderDecoderModel(VisionEncoderDecoderModel):
+class LongitudinalPromptMultiCXREncoderDecoderModel(VisionEncoderDecoderModel):
 
     config_class = VisionEncoderDecoderConfig
     base_model_prefix = "vision_encoder_decoder"
@@ -127,7 +127,7 @@ class LongitudinalPromptVariableCXREncoderDecoderModel(VisionEncoderDecoderModel
 
         # Encoder:
         if encoder is None:
-            encoder = VariableCvtWithProjectionHead(config=config.encoder)
+            encoder = MultiCvtWithProjectionHead(config=config.encoder)
 
         # Decoder:
         if decoder is None:
@@ -150,7 +150,7 @@ class LongitudinalPromptVariableCXREncoderDecoderModel(VisionEncoderDecoderModel
         self.encoder.config = self.config.encoder
         self.decoder.config = self.config.decoder
 
-        # Load variable checkpoint:
+        # Load multi checkpoint:
         if encoder_decoder_ckpt_name:
             encoder_decoder = AutoModel.from_pretrained(encoder_decoder_ckpt_name, trust_remote_code=True)
             self.load_state_dict(encoder_decoder.state_dict())
@@ -265,6 +265,12 @@ class LongitudinalPromptVariableCXREncoderDecoderModel(VisionEncoderDecoderModel
         Modification of: 
             https://github.com/huggingface/transformers/blob/main/src/transformers/models/encoder_decoder/modeling_encoder_decoder.py#L660
         """
+
+        # An update to generate() now prepends bos_token_id to each sequence if it does not exist at the start of the input: 
+        #   https://github.com/huggingface/transformers/blob/d533465150532b0c5de167b574e59f64c68b1154/src/transformers/generation/utils.py#L699C13-L699C30
+        # Hence, we remove the prepended bos_token_id from each sequence if it is there:
+        if torch.all(input_ids[:, 0] == 1):
+            input_ids = input_ids[:, 1:]
 
         decoder_inputs = self.decoder.prepare_inputs_for_generation(input_ids, past_key_values=past_key_values)
         decoder_attention_mask = (input_ids != mask_token_id).int()
