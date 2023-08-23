@@ -28,7 +28,7 @@ Generated reports for the single-image, multi-image, and longitudinal, multi-ima
 
 # Hugging Face models:
 
-*These will be made available after double-blind review*
+*Links will be posted here after double-blind review*
 
 <!---
  - **Longitudinal, multi-image CXR report generation** with SCST & CXR-BERT reward and generated previous reports: https://huggingface.co/aehrc/cxrmate
@@ -44,7 +44,7 @@ Generated reports for the single-image, multi-image, and longitudinal, multi-ima
 
 # Notebook examples:
 
-*These will be made available after double-blind review*
+*Links will be posted here after double-blind review*
 
 <!---
 
