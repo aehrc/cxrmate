@@ -80,7 +80,9 @@ dlhpcstarter -t cxrmate_hf -c config/test_huggingface/longitudinal_gen_prompt_cx
 
 See [`dlhpcstarter==0.1.4`](https://github.com/csiro-mlai/dl_hpc_starter_pack) for more options. 
 
-Note: data will be saved in the experiment directory (`exp_dir` in the configuration file).
+**Note**: 
+ - Data will be saved in the experiment directory (`exp_dir` in the configuration file).
+ - See https://github.com/MIT-LCP/mimic-cxr/tree/master/txt to extract the sections from the reports.
 
 # Training:
    
@@ -104,7 +106,9 @@ To then train with Self-Critical Sequence Training (SCST) with the CXR-BERT rewa
     dlhpcstarter -t mimic_cxr -c config/train/longitudinal_gen_prompt_cxr-bert.yaml --stages_module tools.stages --train
     ```
 
-See [`dlhpcstarter==0.1.4`](https://github.com/csiro-mlai/dl_hpc_starter_pack) for more options. 
+**Note**: 
+ - See [`dlhpcstarter==0.1.4`](https://github.com/csiro-mlai/dl_hpc_starter_pack) for more options.
+ - See https://github.com/MIT-LCP/mimic-cxr/tree/master/txt to extract the sections from the reports.
 
 # Help/Issues:
 If you need help, or if there are any issues, please leave an issue and we will get back to you as soon as possible.

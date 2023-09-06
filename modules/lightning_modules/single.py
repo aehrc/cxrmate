@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Optional
 
 import pandas as pd
@@ -6,12 +7,6 @@ import torch
 import torch.nn.functional as F
 import transformers
 from lightning.pytorch import LightningModule
-from tools.metrics.chexbert import CheXbertClassificationMetrics
-from tools.metrics.coco import COCONLGMetricsMIMICCXR
-from tools.metrics.cxr_bert import CXRBERT
-from tools.metrics.report_ids_logger import \
-    ReportTokenIdentifiersLogger
-from tools.metrics.report_logger import ReportLogger
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
@@ -19,6 +14,11 @@ from data.dicom_id import DICOMIDSubset
 from modules.transformers.single_model.modelling_single import (
     CvtWithProjectionHead, CvtWithProjectionHeadConfig,
     SingleCXREncoderDecoderModel)
+from tools.metrics.chexbert import CheXbertClassificationMetrics
+from tools.metrics.coco import COCONLGMetricsMIMICCXR
+from tools.metrics.cxr_bert import CXRBERT
+from tools.metrics.report_ids_logger import ReportTokenIdentifiersLogger
+from tools.metrics.report_logger import ReportLogger
 
 
 class SingleCXR(LightningModule):
@@ -241,6 +241,56 @@ class SingleCXR(LightningModule):
                 ),
             ]
         )
+
+    def prepare_data(self):
+        """
+        https://lightning.ai/docs/pytorch/stable/api/lightning.pytorch.core.hooks.DataHooks.html#lightning.pytorch.core.hooks.DataHooks.prepare_data
+        """
+
+        # If the combination of the splits, reports, and metadata does not exist, create and save it:
+        if not os.path.isfile(self.merged_csv_path):
+
+            splits_path = os.path.join(
+                self.dataset_dir,
+                'physionet.org',
+                'files',
+                'mimic-cxr-jpg',
+                '2.0.0',
+                'mimic-cxr-2.0.0-split.csv',
+            )
+            
+            # See https://github.com/MIT-LCP/mimic-cxr/tree/master/txt to create report sections:
+            reports_path = os.path.join(self.dataset_dir, 'mimic_cxr_sections', 'mimic_cxr_sectioned.csv')
+            metadata_path = os.path.join(
+                self.dataset_dir,
+                'physionet.org',
+                'files',
+                'mimic-cxr-jpg',
+                '2.0.0',
+                'mimic-cxr-2.0.0-metadata.csv',
+            )
+
+            splits = pd.read_csv(splits_path)
+            assert os.path.isfile(reports_path), f'{reports_path} does not exist, please see https://github.com/MIT-LCP/mimic-cxr/tree/master/txt to extract sections from the reports.'
+            reports = pd.read_csv(reports_path)
+            metadata = pd.read_csv(metadata_path)
+
+            # Findings
+            reports.findings = reports.findings.replace(r'\n', ' ', regex=True)
+            reports.findings = reports.findings.replace(r'\t', ' ', regex=True)
+            reports.findings = reports.findings.replace(r'\s{2,}', ' ', regex=True)
+
+            # Impression
+            reports.impression = reports.impression.replace(r'\n', ' ', regex=True)
+            reports.impression = reports.impression.replace(r'\t', ' ', regex=True)
+            reports.impression = reports.impression.replace(r'\s{2,}', ' ', regex=True)
+
+            reports.rename(columns={'study': 'study_id'}, inplace=True)
+            reports.study_id = reports.study_id.str[1:].astype('int32')
+            df = pd.merge(splits, reports, on='study_id')
+            df = pd.merge(df, metadata, on=['dicom_id', 'study_id', 'subject_id'])
+            Path(os.path.dirname(self.merged_csv_path)).mkdir(parents=True, exist_ok=True)
+            df.to_csv(self.merged_csv_path, index=False)
 
     def setup(self, stage=None):
         """
