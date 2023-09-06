@@ -7,3 +7,6 @@ sacremoses==0.0.53
 stanza==1.4.2
 
 numpy==1.23.5
+
+transformers==4.33.0
+torchvision==0.15.2
