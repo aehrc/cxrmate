@@ -24,7 +24,7 @@ class CXRBERT(Metric):
             exp_dir - experiment directory where outputs will be saved.
             accumulate_over_dicoms - whether to accumulate scores over the report for each DICOM for a study.
         """
-        super().__init__(dist_sync_on_step=False, compute_on_step=False)
+        super().__init__(dist_sync_on_step=False)
 
         self.split = split
         self.ckpt_dir = ckpt_dir

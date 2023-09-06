@@ -43,7 +43,7 @@ class COCONLGMetricsMIMICCXR(Metric):
         exp_dir - experiment directory to save the captions and individual scores.
         dist_sync_on_step - sync the workers at each step.
         """
-        super().__init__(dist_sync_on_step=dist_sync_on_step, compute_on_step=False)
+        super().__init__(dist_sync_on_step=dist_sync_on_step)
         self.accumulate_over_dicoms = accumulate_over_dicoms
         self.metrics = ['bleu', 'cider', 'meteor', 'rouge', 'spice'] if metrics is None else metrics
         self.metrics = [metric.lower() for metric in metrics]

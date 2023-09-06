@@ -32,7 +32,7 @@ class MultiCXR(SingleCXR):
         encoder_decoder_ckpt_name = 'aehrc/cxrmate-multi-tf'
 
         # Decoder tokenizer:
-        self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(encoder_decoder_ckpt_name, cache_dir=self.ckpt_zoo_dir)
+        self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(encoder_decoder_ckpt_name)
         os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
         # Print the special tokens:
@@ -53,19 +53,11 @@ class MultiCXR(SingleCXR):
         config_decoder.is_decoder = True
         config_decoder.add_cross_attention = True
         encoder_ckpt_name = 'microsoft/cvt-21-384-22k'
-        config_encoder = CvtWithProjectionHeadConfig.from_pretrained(
-            os.path.join(self.ckpt_zoo_dir, encoder_ckpt_name),
-            local_files_only=True,
-            projection_size=config_decoder.hidden_size,
-        )
+        config_encoder = CvtWithProjectionHeadConfig.from_pretrained(encoder_ckpt_name, projection_size=config_decoder.hidden_size)
 
         # Encoder-to-decoder model:
         if self.warm_start_modules:
-            encoder = MultiCvtWithProjectionHead.from_pretrained(
-                os.path.join(self.ckpt_zoo_dir, encoder_ckpt_name),
-                local_files_only=True,
-                config=config_encoder,
-            )
+            encoder = MultiCvtWithProjectionHead.from_pretrained(encoder_ckpt_name, config=config_encoder)
             decoder = transformers.BertLMHeadModel(config=config_decoder)
             self.encoder_decoder = MultiCXREncoderDecoderModel(encoder=encoder, decoder=decoder)
         else:
@@ -73,10 +65,7 @@ class MultiCXR(SingleCXR):
             self.encoder_decoder = MultiCXREncoderDecoderModel(config=config)
 
         # This is to get the pre-processing parameters for the checkpoint, this is not actually used for pre-processing:
-        self.encoder_feature_extractor = transformers.AutoFeatureExtractor.from_pretrained(
-            os.path.join(self.ckpt_zoo_dir, encoder_ckpt_name),
-            local_files_only=True,
-        )
+        self.encoder_feature_extractor = transformers.AutoFeatureExtractor.from_pretrained(encoder_ckpt_name)
 
         # Image transformations:
         self.train_transforms = transforms.Compose(

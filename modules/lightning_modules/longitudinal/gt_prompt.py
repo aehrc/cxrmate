@@ -32,7 +32,7 @@ class GTPrompt(MultiCXR):
         encoder_decoder_ckpt_name = 'aehrc/cxrmate-tf'
 
         # Decoder tokenizer:
-        self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(encoder_decoder_ckpt_name, cache_dir=self.ckpt_zoo_dir)
+        self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(encoder_decoder_ckpt_name)
         os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
         # Print the special tokens:
@@ -53,11 +53,7 @@ class GTPrompt(MultiCXR):
         config_decoder.is_decoder = True
         config_decoder.add_cross_attention = True
         encoder_ckpt_name = 'microsoft/cvt-21-384-22k'
-        config_encoder = CvtWithProjectionHeadConfig.from_pretrained(
-            os.path.join(self.ckpt_zoo_dir, encoder_ckpt_name),
-            local_files_only=True,
-            projection_size=config_decoder.hidden_size,
-        )
+        config_encoder = CvtWithProjectionHeadConfig.from_pretrained(encoder_ckpt_name, projection_size=config_decoder.hidden_size)
         config = transformers.VisionEncoderDecoderConfig.from_encoder_decoder_configs(config_encoder, config_decoder)
 
         # Encoder-to-decoder model:
@@ -69,10 +65,7 @@ class GTPrompt(MultiCXR):
             self.encoder_decoder = LongitudinalPromptMultiCXREncoderDecoderModel(config=config)
 
         # This is to get the pre-processing parameters for the checkpoint, this is not actually used for pre-processing:
-        self.encoder_feature_extractor = transformers.AutoFeatureExtractor.from_pretrained(
-            os.path.join(self.ckpt_zoo_dir, encoder_ckpt_name),
-            local_files_only=True,
-        )
+        self.encoder_feature_extractor = transformers.AutoFeatureExtractor.from_pretrained(encoder_ckpt_name)
 
         # Image transformations:
         self.train_transforms = transforms.Compose(

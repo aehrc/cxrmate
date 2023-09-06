@@ -172,9 +172,7 @@ class SingleCXR(LightningModule):
         encoder_decoder_ckpt_name = 'aehrc/cxrmate-single-tf'
 
         # Decoder tokenizer:
-        self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(
-            encoder_decoder_ckpt_name, cache_dir=self.ckpt_zoo_dir,
-        )
+        self.tokenizer = transformers.PreTrainedTokenizerFast.from_pretrained(encoder_decoder_ckpt_name)
         os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
         # Print the special tokens:
@@ -195,29 +193,19 @@ class SingleCXR(LightningModule):
         config_decoder.is_decoder = True
         config_decoder.add_cross_attention = True
         encoder_ckpt_name = 'microsoft/cvt-21-384-22k'
-        config_encoder = CvtWithProjectionHeadConfig.from_pretrained(
-            os.path.join(self.ckpt_zoo_dir, encoder_ckpt_name),
-            local_files_only=True,
-            projection_size=config_decoder.hidden_size,
-        )
+        config_encoder = CvtWithProjectionHeadConfig.from_pretrained(encoder_ckpt_name, projection_size=config_decoder.hidden_size)
 
         # Encoder-to-decoder model:
         if self.warm_start_modules:
-            encoder = CvtWithProjectionHead.from_pretrained(
-                os.path.join(self.ckpt_zoo_dir, encoder_ckpt_name),
-                local_files_only=True,
-                config=config_encoder,
-            )
+            encoder = CvtWithProjectionHead.from_pretrained(encoder_ckpt_name, config=config_encoder)
             decoder = transformers.BertLMHeadModel(config=config_decoder)
             self.encoder_decoder = SingleCXREncoderDecoderModel(encoder=encoder, decoder=decoder)
         else:
-            config = transformers.VisionEncoderDecoderConfig.from_pretrained(
-                encoder_decoder_ckpt_name, trust_remote_code=True, cache_dir=self.ckpt_zoo_dir,
-            )
+            config = transformers.VisionEncoderDecoderConfig.from_pretrained(encoder_decoder_ckpt_name)
             self.encoder_decoder = SingleCXREncoderDecoderModel(config=config)
 
         # This is to get the pre-processing parameters for the checkpoint, this is not actually used for pre-processing:
-        image_processor = transformers.AutoFeatureExtractor.from_pretrained(encoder_decoder_ckpt_name, cache_dir=self.ckpt_zoo_dir)
+        image_processor = transformers.AutoFeatureExtractor.from_pretrained(encoder_decoder_ckpt_name)
 
         # Image transformations:
         self.train_transforms = transforms.Compose(
