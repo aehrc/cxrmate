@@ -1,6 +1,5 @@
 # CXRMate: Leveraging Longitudinal Data and a Semantic Similarity Reward for Chest X-Ray Report Generation
 
-<!---
 Paper (arXiv): https://arxiv.org/abs/2307.09758
 ```
 @misc{nicolson2023longitudinal,
@@ -12,9 +11,9 @@ Paper (arXiv): https://arxiv.org/abs/2307.09758
       primaryClass={cs.CV}
 }
 ```
---> 
 
-CXRMate is a longitudinal, multi-image CXR report generation encoder-to-decoder model that conditions the report generation process on the report from the previous patient's study if available. The CXRMate checkpoint trained on MIMIC-CXR is available on the Hugging Face Hub: <!-- https://huggingface.co/aehrc/cxrmate --> *This will be available after double-blind review*.
+
+CXRMate is a longitudinal, multi-image CXR report generation encoder-to-decoder model that conditions the report generation process on the report from the previous patient's study if available. The CXRMate checkpoint trained on MIMIC-CXR is available on the Hugging Face Hub: https://huggingface.co/aehrc/cxrmate.
 
 <!-- ADD CITATION HERE -->
 
@@ -28,9 +27,6 @@ Generated reports for the single-image, multi-image, and longitudinal, multi-ima
 
 # Hugging Face models:
 
-*Links will be posted here after double-blind review*
-
-<!---
  - **Longitudinal, multi-image CXR report generation** with SCST & CXR-BERT reward and generated previous reports: https://huggingface.co/aehrc/cxrmate
  - **Longitudinal, multi-image CXR report generation** with SCST & CXR-BERT reward and radiologist previous reports: https://huggingface.co/aehrc/cxrmate-gt
  - **Longitudinal, multi-image CXR report generation** with TF: https://huggingface.co/aehrc/cxrmate-tf
@@ -39,18 +35,10 @@ Generated reports for the single-image, multi-image, and longitudinal, multi-ima
 
  ***SCST: Self-Critical Sequence Training, TF: Teacher Forcing***
 
---> 
-
-
 # Notebook examples:
-
-*Links will be posted here after double-blind review*
-
-<!---
 
 Notebook examples for the models can be found in the [`examples`](https://anonymous.4open.science/r/cxrmate-D1D3/examples) directory.
 
---> 
 
 
 # Dataset:
