@@ -9,4 +9,4 @@ definition: GTPrompt
 
 mbatch_size: 2
 
-multi_ckpt_name: None
+multi_ckpt_name: null

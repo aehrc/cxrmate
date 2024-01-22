@@ -43,7 +43,7 @@ class CXRBERTReward:
                 input_ids=tokenizer_output.input_ids.to(self.device),
                 attention_mask=tokenizer_output.attention_mask.to(self.device),
                 output_cls_projected_embedding=True,
-                return_dict=True,
+                return_dict=False,
             )
 
             tokenizer_output = self.tokenizer.batch_encode_plus(
@@ -59,13 +59,15 @@ class CXRBERTReward:
                 input_ids=tokenizer_output.input_ids.to(self.device),
                 attention_mask=tokenizer_output.attention_mask.to(self.device),
                 output_cls_projected_embedding=True,
-                return_dict=True,
+                return_dict=False,
             )
 
             # Compute the cosine similarity of sentence embeddings obtained from input text prompts.
             sim = torch.nn.functional.cosine_similarity(
-                prediction_embeddings.cls_projected_embedding,
-                label_embeddings.cls_projected_embedding,
+                prediction_embeddings[2],
+                label_embeddings[2],
+                # prediction_embeddings.cls_projected_embedding,
+                # label_embeddings.cls_projected_embedding,
             )
 
         return sim

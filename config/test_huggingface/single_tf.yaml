@@ -1,5 +1,5 @@
 exp_dir: experiments
-dataset_dir: datasets  # Place MIMIC-CXR here.
+dataset_dir: datasets # Place MIMIC-CXR in this directory.
 ckpt_zoo_dir: checkpoints
 
 module: modules.lightning_modules.single

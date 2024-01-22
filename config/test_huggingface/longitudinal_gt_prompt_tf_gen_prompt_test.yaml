@@ -9,4 +9,4 @@ definition: GeneratedPrompt
 
 mbatch_size: 1
 
-multi_ckpt_name: None
+multi_ckpt_name: null

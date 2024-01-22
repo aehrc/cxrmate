@@ -9,6 +9,7 @@ class CheXbert(nn.Module):
     def __init__(self, ckpt_dir, bert_path, checkpoint_path, device, p=0.1):
         super(CheXbert, self).__init__()
 
+        self.ckpt_dir = ckpt_dir
         self.device = device
 
         self.tokenizer = BertTokenizer.from_pretrained(bert_path, cache_dir=ckpt_dir)
@@ -28,7 +29,10 @@ class CheXbert(nn.Module):
             self.linear_heads.append(nn.Linear(hidden_size, 2, bias=True))
 
             # Load CheXbert checkpoint
-            state_dict = torch.load(os.path.join(ckpt_dir, checkpoint_path), map_location=device)['model_state_dict']
+            ckpt_path = os.path.join(self.ckpt_dir, checkpoint_path)
+            if not os.path.isfile(ckpt_path):
+                raise ValueError(f'The CheXbert checkpoint does not exist at {self.ckpt_dir}, please download it from: https://github.com/stanfordmlgroup/CheXbert#checkpoint-download.')
+            state_dict = torch.load(ckpt_path, map_location=device)['model_state_dict']
 
             new_state_dict = OrderedDict()
             new_state_dict["bert.embeddings.position_ids"] = torch.arange(config.max_position_embeddings).expand((1, -1))

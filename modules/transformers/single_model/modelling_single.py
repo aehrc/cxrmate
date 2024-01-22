@@ -6,7 +6,7 @@ import transformers
 from torch.nn import CrossEntropyLoss
 from transformers import PreTrainedTokenizerFast, VisionEncoderDecoderModel
 from transformers.configuration_utils import PretrainedConfig
-from transformers.modeling_outputs import BaseModelOutput, Seq2SeqLMOutput
+from transformers.modeling_outputs import BaseModelOutput, ModelOutput, Seq2SeqLMOutput
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.vision_encoder_decoder.configuration_vision_encoder_decoder import \
     VisionEncoderDecoderConfig
@@ -19,10 +19,6 @@ class CvtWithProjectionHeadConfig(transformers.CvtConfig):
     def __init__(self, projection_size: int = None, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.projection_size = projection_size
-
-
-class ModelOutputWithProjectionEmbedding(transformers.modeling_outputs.ModelOutput):
-    last_hidden_state: torch.FloatTensor
 
 
 class CvtProjectionHead(torch.nn.Module):
@@ -58,7 +54,7 @@ class CvtWithProjectionHead(transformers.CvtPreTrainedModel):
         pixel_values: Optional[torch.Tensor] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
-    ) -> Union[Tuple, ModelOutputWithProjectionEmbedding]:
+    ) -> Union[Tuple, ModelOutput]:
 
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
@@ -75,7 +71,7 @@ class CvtWithProjectionHead(transformers.CvtPreTrainedModel):
         if not return_dict:
             return projection
 
-        return ModelOutputWithProjectionEmbedding(
+        return ModelOutput(
             last_hidden_state=projection,
         )
     
