@@ -1,22 +1,15 @@
-defaults:
-  # - //home/nic261/config/1gpu.yaml@_global_
-  # - //home/nic261/config/paths.yaml@_global_
-  - //home/anicolson/config/1gpu.yaml@_global_
-  - //home/anicolson/config/paths.yaml@_global_
-  - _self_
-venv_path: /software/projects/pawsey0864/anicolson/environments/multimodal_23/bin/activate
-
-# exp_dir: experiments
-# dataset_dir: datasets
-# ckpt_zoo_dir: checkpoints
-
-test_ckpt_name: 'aehrc/cxrmate-single-tf'
+exp_dir: experiments
+dataset_dir: datasets  # Place MIMIC-CXR here.
+ckpt_zoo_dir: checkpoints
 
 module: modules.lightning_modules.single
 definition: SingleCXR
 
+test_ckpt_name: 'aehrc/cxrmate-single-tf'
+
 strategy: 'ddp'
 devices: 1
+num_workers: 5
 
 sections_to_evaluate: ['report']
 max_images_per_study: 5
