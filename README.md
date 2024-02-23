@@ -19,7 +19,7 @@ CXRMate is a longitudinal, multi-image CXR report generation encoder-to-decoder 
 
 |![](docs/tokens.png)|
 |----|
-| <p align="center"> <a>CXRMate: longitudinal, multi-image CXR report generation. The decoder is prompted by the report of the previous study. [PMT], [PMT-SEP] [BOS],  [SEP], and [EOS] denote the *prompt*, *prompt separator*,  *beginning-of-sentence*, *separator*, and *end-of-sentence* special tokens, respectively.</a> </p> |
+| <p align="center"> <a>CXRMate: a longitudinal, multi-image CXR report generator trained with reinforcement learning using the CXR-BERT cosine similarity reward. The findings and impression sections from the reports of the current and previous studies are differentiated by section embeddings and separator tokens. The prompt is the report of the previous study. The decoder is prompted by the report of the previous study. [PMT], [PMT-SEP] [BOS],  [SEP], and [EOS] denote the *prompt*, *prompt separator*,  *beginning-of-sentence*, *separator*, and *end-of-sentence* special tokens, respectively.</a> </p> |
 
 # Generated reports:
 <!-- Generated reports for the single-image, multi-image, and longitudinal, multi-image (both prompted with the radiologist and the generated reports) are located in the [`generated_reports`](https://github.com/aehrc/cxrmate/blob/main/generated_reports) directory. -->
