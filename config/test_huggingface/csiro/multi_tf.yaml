@@ -1,0 +1,7 @@
+defaults:
+  - //datasets/work/hb-mlaifsp-mm/work/repositories/cxrmate/config/test_huggingface/multi_tf.yaml@_global_
+  - _self_
+
+exp_dir: /datasets/work/hb-mlaifsp-mm/work/experiments
+dataset_dir: /scratch3/nic261/datasets  # Place MIMIC-CXR in this directory.
+ckpt_zoo_dir: /datasets/work/hb-mlaifsp-mm/work/checkpoints

@@ -1,8 +1,9 @@
-from collections import OrderedDict
-from transformers import BertConfig, BertModel, BertTokenizer
 import os
+from collections import OrderedDict
+
 import torch
 import torch.nn as nn
+from transformers import BertConfig, BertModel, BertTokenizer
 
 
 class CheXbert(nn.Module):
@@ -35,7 +36,7 @@ class CheXbert(nn.Module):
             state_dict = torch.load(ckpt_path, map_location=device)['model_state_dict']
 
             new_state_dict = OrderedDict()
-            new_state_dict["bert.embeddings.position_ids"] = torch.arange(config.max_position_embeddings).expand((1, -1))
+            # new_state_dict["bert.embeddings.position_ids"] = torch.arange(config.max_position_embeddings).expand((1, -1))
             for key, value in state_dict.items():
                 if 'bert' in key:
                     new_key = key.replace('module.bert.', 'bert.')

@@ -1,10 +1,5 @@
-dlhpcstarter==0.1.4
-bert-score==0.3.12
-peft==0.3.0
+dlhpcstarter==0.1.7
+transformers>=4.41.2
+peft
 pycocoevalcap==1.2
-pycocotools==2.0.4
-sacremoses==0.0.53
-stanza==1.4.2
-
-numpy==1.23.5
-torchvision
+pycocotools==2.0.8

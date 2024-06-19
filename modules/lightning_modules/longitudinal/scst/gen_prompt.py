@@ -276,33 +276,23 @@ class SCSTGeneratedPrompt(GeneratedPrompt):
             sample_str - the sampled captions.
         """
 
-        # Logits warper:
-        logits_warper = transformers.LogitsProcessorList(
-            [
-                transformers.TemperatureLogitsWarper(self.scst_sample_temperature),
-                transformers.TopPLogitsWarper(self.scst_sample_top_p),
-                transformers.TopKLogitsWarper(self.scst_sample_top_k),
-            ]
-        )
-
-        # Stopping criteria:
-        stopping_criteria = transformers.StoppingCriteriaList([
-            transformers.MaxLengthCriteria(max_length=self.decoder_max_len + prompt_ids.shape[1])],
-        )
-
-        sample = self.encoder_decoder.sample(
+        sample = self.encoder_decoder.generate.__wrapped__(
+            self.encoder_decoder,
             input_ids=prompt_ids.to(self.device),
             special_token_ids=[self.tokenizer.bos_token_id, self.tokenizer.sep_token_id],
             encoder_outputs=encoder_outputs,
-            logits_warper=logits_warper,
-            stopping_criteria=stopping_criteria,
+            top_p=self.scst_sample_top_p,
+            top_k=self.scst_sample_top_k,
+            temperature=self.scst_sample_temperature,
+            max_length=self.decoder_max_len + prompt_ids.shape[1],
             bos_token_id=self.tokenizer.bos_token_id,
             eos_token_id=self.tokenizer.eos_token_id,
             pad_token_id=self.tokenizer.pad_token_id,
             mask_token_id=self.tokenizer.pad_token_id,
-            prompt_token_id=self.tokenizer.additional_special_tokens_ids[
-                self.tokenizer.additional_special_tokens.index('[PMT]')
-            ],
+            num_beams=1,
+            # prompt_token_id=self.tokenizer.additional_special_tokens_ids[
+            #     self.tokenizer.additional_special_tokens.index('[PMT]')
+            # ],
             return_dict_in_generate=True,
             do_sample=True,
             use_cache=True,

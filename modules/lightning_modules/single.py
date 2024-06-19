@@ -12,8 +12,10 @@ from torchvision import transforms
 
 from data.dicom_id import DICOMIDSubset
 from modules.transformers.single_model.modelling_single import (
-    CvtWithProjectionHead, CvtWithProjectionHeadConfig,
-    SingleCXREncoderDecoderModel)
+    CvtWithProjectionHead,
+    CvtWithProjectionHeadConfig,
+    SingleCXREncoderDecoderModel,
+)
 from tools.metrics.chexbert import CheXbertClassificationMetrics
 from tools.metrics.coco import COCONLGMetricsMIMICCXR
 from tools.metrics.cxr_bert import CXRBERT
