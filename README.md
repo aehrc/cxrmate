@@ -28,7 +28,8 @@ Generated reports for the single-image, multi-image, and longitudinal, multi-ima
 # Hugging Face models:
 
  - **Longitudinal, multi-image CXR report generation** with SCST & CXR-BERT reward and generated previous reports: https://huggingface.co/aehrc/cxrmate
- - **Longitudinal, multi-image CXR report generation** with SCST & CXR-BERT reward and radiologist previous reports: https://huggingface.co/aehrc/cxrmate-gt
+ - **Longitudinal, multi-image CXR report generation** with SCST & CXR-BERT reward and radiologist previous reports: https://huggingface.co/aehrc/cxrmate-tf
+ 
  - **Longitudinal, multi-image CXR report generation** with TF: https://huggingface.co/aehrc/cxrmate-tf
  - **Multi-image CXR report generation** with TF: https://huggingface.co/aehrc/cxrmate-multi-tf
  - **Single-image CXR report generation** with TF: https://huggingface.co/aehrc/cxrmate-single-tf
