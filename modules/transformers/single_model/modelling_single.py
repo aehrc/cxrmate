@@ -54,6 +54,7 @@ class CvtWithProjectionHead(transformers.CvtPreTrainedModel):
         pixel_values: Optional[torch.Tensor] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
     ) -> Union[Tuple, ModelOutput]:
 
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
