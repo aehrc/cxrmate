@@ -12,7 +12,8 @@ from data.prompt import PreviousReportSubset
 from modules.lightning_modules.multi import MultiCXR
 from modules.transformers.longitudinal_model.modelling_longitudinal import (
     CvtWithProjectionHeadConfig,
-    LongitudinalPromptMultiCXREncoderDecoderModel)
+    LongitudinalPromptMultiCXREncoderDecoderModel,
+)
 
 
 class GTPrompt(MultiCXR):

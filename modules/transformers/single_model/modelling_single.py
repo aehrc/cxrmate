@@ -8,8 +8,9 @@ from transformers import PreTrainedTokenizerFast, VisionEncoderDecoderModel
 from transformers.configuration_utils import PretrainedConfig
 from transformers.modeling_outputs import BaseModelOutput, ModelOutput, Seq2SeqLMOutput
 from transformers.modeling_utils import PreTrainedModel
-from transformers.models.vision_encoder_decoder.configuration_vision_encoder_decoder import \
-    VisionEncoderDecoderConfig
+from transformers.models.vision_encoder_decoder.configuration_vision_encoder_decoder import (
+    VisionEncoderDecoderConfig,
+)
 from transformers.utils import logging
 
 logger = logging.get_logger(__name__)
@@ -54,6 +55,7 @@ class CvtWithProjectionHead(transformers.CvtPreTrainedModel):
         pixel_values: Optional[torch.Tensor] = None,
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
     ) -> Union[Tuple, ModelOutput]:
 
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict

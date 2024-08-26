@@ -4,9 +4,13 @@ from argparse import Namespace
 import torch
 import transformers
 from dlhpcstarter.trainer import trainer_instance
-from dlhpcstarter.utils import (get_test_ckpt_path, importer,
-                                load_config_and_update_args,
-                                resume_from_ckpt_path, write_test_ckpt_path)
+from dlhpcstarter.utils import (
+    get_test_ckpt_path,
+    importer,
+    load_config_and_update_args,
+    resume_from_ckpt_path,
+    write_test_ckpt_path,
+)
 from lightning.pytorch import seed_everything
 
 
@@ -86,8 +90,7 @@ def stages(args: Namespace):
 
     # Test
     if args.test:
-        if hasattr(args, 'test_ckpt_name'):
-            assert 'model' not in locals(), 'if "test_ckpt_name" is defined in the config, it will overwrite the model checkpoint that has been trained.'
+        if hasattr(args, 'test_ckpt_name') and 'model' not in locals():
             model = TaskModel(**vars(args))
             hf_ckpt = transformers.AutoModel.from_pretrained(args.test_ckpt_name, trust_remote_code=True)
             model.encoder_decoder.load_state_dict(hf_ckpt.state_dict())
@@ -96,22 +99,10 @@ def stages(args: Namespace):
                 model = TaskModel(**vars(args))
         else:
 
-            if hasattr(args, 'other_exp_dir'):
-
-                # The experiment trial directory of the other configuration:
-                other_exp_dir_trial = os.path.join(args.other_exp_dir, f'trial_{args.trial}')
-
-                # Get the path to the best performing checkpoint
-                ckpt_path = get_test_ckpt_path(
-                    other_exp_dir_trial, args.other_monitor, args.other_monitor_mode, 
-                )
-            
-            else:
-
-                # Get the path to the best performing checkpoint
-                ckpt_path = get_test_ckpt_path(
-                    args.exp_dir_trial, args.monitor, args.monitor_mode, args.test_epoch, args.test_ckpt_path,
-                )
+            # Get the path to the best performing checkpoint
+            ckpt_path = get_test_ckpt_path(
+                args.exp_dir_trial, args.monitor, args.monitor_mode, args.test_epoch, args.test_ckpt_path,
+            )
 
             print('Testing checkpoint: {}.'.format(ckpt_path))
             write_test_ckpt_path(ckpt_path, args.exp_dir_trial)

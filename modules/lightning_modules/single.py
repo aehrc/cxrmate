@@ -252,25 +252,37 @@ class SingleCXR(LightningModule):
         # If the combination of the splits, reports, and metadata does not exist, create and save it:
         if not os.path.isfile(self.merged_csv_path):
 
-            splits_path = os.path.join(
+            base_splits_path = os.path.join(
                 self.dataset_dir,
                 'physionet.org',
                 'files',
                 'mimic-cxr-jpg',
                 '2.0.0',
-                'mimic-cxr-2.0.0-split.csv',
+                'mimic-cxr-2.0.0-split'
             )
+            if os.path.exists(base_splits_path + '.csv'):
+                splits_path = base_splits_path + '.csv'
+            elif os.path.exists(base_splits_path + '.csv.gz'):
+                splits_path = base_splits_path + '.csv.gz'
+            else:
+                raise FileNotFoundError("Neither .csv nor .csv.gz split files exist.")
             
             # See https://github.com/MIT-LCP/mimic-cxr/tree/master/txt to create report sections:
             reports_path = os.path.join(self.dataset_dir, 'mimic_cxr_sections', 'mimic_cxr_sectioned.csv')
-            metadata_path = os.path.join(
+            base_metadata_path = os.path.join(
                 self.dataset_dir,
                 'physionet.org',
                 'files',
                 'mimic-cxr-jpg',
                 '2.0.0',
-                'mimic-cxr-2.0.0-metadata.csv',
+                'mimic-cxr-2.0.0-metadata'
             )
+            if os.path.exists(base_metadata_path + '.csv'):
+                metadata_path = base_metadata_path + '.csv'
+            elif os.path.exists(base_metadata_path + '.csv.gz'):
+                metadata_path = base_metadata_path + '.csv.gz'
+            else:
+                raise FileNotFoundError("Neither .csv nor .csv.gz metadata files exist.")
 
             splits = pd.read_csv(splits_path)
             assert os.path.isfile(reports_path), f'{reports_path} does not exist, please see https://github.com/MIT-LCP/mimic-cxr/tree/master/txt to extract sections from the reports.'
