@@ -3,3 +3,4 @@ transformers>=4.41.2
 peft
 pycocoevalcap==1.2
 pycocotools==2.0.8
+bert-score

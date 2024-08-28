@@ -16,6 +16,7 @@ from modules.transformers.single_model.modelling_single import (
     CvtWithProjectionHeadConfig,
     SingleCXREncoderDecoderModel,
 )
+from tools.metrics.bertscore import BERTScoreRoBERTaLarge
 from tools.metrics.chexbert import CheXbertClassificationMetrics
 from tools.metrics.coco import COCONLGMetricsMIMICCXR
 from tools.metrics.cxr_bert import CXRBERT
@@ -148,6 +149,22 @@ class SingleCXR(LightningModule):
                     exp_dir=self.exp_dir_trial,
                     split=f'test_{i}',
                     accumulate_over_dicoms=self.accumulate_over_dicoms,
+                ),
+            )
+
+        # BERTScore
+        for i in self.sections_to_evaluate:
+            self.test_metrics.append(f'test_{i}_bertscore')
+            setattr(
+                self,
+                self.test_metrics[-1],
+                BERTScoreRoBERTaLarge(
+                    ckpt_dir=self.ckpt_zoo_dir,
+                    mbatch_size=self.mbatch_size,
+                    exp_dir=self.exp_dir_trial,
+                    split=f'test_{i}',
+                    accumulate_over_dicoms=self.accumulate_over_dicoms,
+                    num_workers=self.num_workers,
                 ),
             )
 
