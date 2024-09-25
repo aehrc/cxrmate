@@ -14,3 +14,4 @@ warm_start_name: 'aehrc/cxrmate-tf'
 lr: 5e-6
 
 max_epochs: 1
+val_check_interval: 0.1
