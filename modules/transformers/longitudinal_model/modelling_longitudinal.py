@@ -127,6 +127,7 @@ class LongitudinalPromptMultiCXREncoderDecoderModel(VisionEncoderDecoderModel):
             encoder = MultiCvtWithProjectionHead(config=config.encoder)
 
         # Decoder:
+        config.decoder._attn_implementation = 'eager'
         if decoder is None:
             decoder = transformers.BertLMHeadModel(config=config.decoder)
 
@@ -288,7 +289,7 @@ class LongitudinalPromptMultiCXREncoderDecoderModel(VisionEncoderDecoderModel):
             'decoder_token_type_ids': token_type_ids,
             'decoder_position_ids': decoder_position_ids,
             'encoder_outputs': encoder_outputs,
-            'past_key_values': decoder_inputs['past_key_values'],
+            'past_key_values': past_key_values,
             'use_cache': use_cache,
         }
         return input_dict
